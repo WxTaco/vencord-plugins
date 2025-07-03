@@ -7,15 +7,81 @@
 import "./styles.css";
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { classNameFactory } from "@api/Styles";
+import ErrorBoundary from "@components/ErrorBoundary";
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { ChannelStore, Menu, SelectedChannelStore, showToast, Toasts } from "@webpack/common";
+import { ChannelStore, GuildStore, Menu, React, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
 
+import { FloatingButtonManager } from "./components/FloatingButton";
+import { ModPanel } from "./components/ModPanel";
 import { settings } from "./settings";
 import { checkMonitoringStatus, initializeMessageMonitoring } from "./utils/messageMonitor";
 import { hasAnyModPermissions } from "./utils/permissions";
 
-// TODO: Add floating button component later
+const cl = classNameFactory("ms-");
+
+// Global state for ModSuite panel
+let modSuitePanelOpen = false;
+
+// ModSuite Manager Component
+const ModSuiteManager = () => {
+    const [isPanelOpen, setIsPanelOpen] = useState(modSuitePanelOpen);
+    const [currentChannel, setCurrentChannel] = useState(() => {
+        const channelId = SelectedChannelStore.getChannelId();
+        return ChannelStore.getChannel(channelId);
+    });
+    const [currentGuild, setCurrentGuild] = useState(() => {
+        return currentChannel?.guild_id ? GuildStore.getGuild(currentChannel.guild_id) : undefined;
+    });
+
+    const handleTogglePanel = () => {
+        if (!isPanelOpen) {
+            const channelId = SelectedChannelStore.getChannelId();
+            const channel = ChannelStore.getChannel(channelId);
+            const guild = channel?.guild_id ? GuildStore.getGuild(channel.guild_id) : undefined;
+
+            setCurrentChannel(channel);
+            setCurrentGuild(guild);
+        }
+
+        const newState = !isPanelOpen;
+        setIsPanelOpen(newState);
+        modSuitePanelOpen = newState;
+    };
+
+    const handleClosePanel = () => {
+        setIsPanelOpen(false);
+        modSuitePanelOpen = false;
+    };
+
+    // Listen for external panel open requests
+    React.useEffect(() => {
+        const handleOpenPanel = () => {
+            handleTogglePanel();
+        };
+
+        document.addEventListener('modsuite:open-panel', handleOpenPanel);
+        return () => document.removeEventListener('modsuite:open-panel', handleOpenPanel);
+    }, []);
+
+    return (
+        <ErrorBoundary noop>
+            <div className={cl("container")}>
+                {settings.store.showFloatingButton && (
+                    <FloatingButtonManager onToggle={handleTogglePanel} />
+                )}
+
+                <ModPanel
+                    channel={currentChannel}
+                    guild={currentGuild}
+                    isVisible={isPanelOpen}
+                    onClose={handleClosePanel}
+                />
+            </div>
+        </ErrorBoundary>
+    );
+};
 
 
 
@@ -81,8 +147,9 @@ const channelContextPatch: NavContextMenuPatchCallback = (children, { channel })
                 label="Open ModSuite"
                 icon={() => <span style={{ fontSize: '14px' }}>🛠️</span>}
                 action={() => {
-                    // TODO: Open ModSuite panel for this channel
-                    console.log('Open ModSuite for channel:', channel.id);
+                    // Trigger panel open event
+                    document.dispatchEvent(new CustomEvent('modsuite:open-panel'));
+                    showToast("Opening ModSuite...", Toasts.Type.MESSAGE);
                 }}
             />
         );
@@ -110,6 +177,9 @@ export default definePlugin({
         // Initialize message monitoring
         initializeMessageMonitoring();
 
+        // Add ModSuite to DOM
+        this.addModSuiteToDOM();
+
         // Show success toast
         showToast("ModSuite plugin loaded successfully!", Toasts.Type.SUCCESS);
     },
@@ -119,6 +189,68 @@ export default definePlugin({
 
         // Stop message monitoring
         checkMonitoringStatus();
+
+        // Remove ModSuite from DOM
+        this.removeModSuiteFromDOM();
+    },
+
+    addModSuiteToDOM() {
+        if (this.modsuiteContainer) return;
+
+        const container = document.createElement('div');
+        container.id = 'modsuite-container';
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.pointerEvents = 'none';
+        container.style.zIndex = '9999';
+
+        document.body.appendChild(container);
+        this.modsuiteContainer = container;
+
+        // Use a simple approach to render React component
+        const renderComponent = () => {
+            try {
+                // Create a root element for React
+                const reactRoot = document.createElement('div');
+                reactRoot.id = 'modsuite-react-root';
+                container.appendChild(reactRoot);
+
+                // Use React.render (legacy method that should work)
+                const ReactDOM = (window as any).ReactDOM || require('react-dom');
+                if (ReactDOM && ReactDOM.render) {
+                    ReactDOM.render(React.createElement(ModSuiteManager), reactRoot);
+                } else {
+                    console.error('ReactDOM not available');
+                }
+            } catch (error) {
+                console.error('Failed to render ModSuite:', error);
+            }
+        };
+
+        // Delay rendering to ensure DOM is ready
+        setTimeout(renderComponent, 100);
+    },
+
+    removeModSuiteFromDOM() {
+        if (this.modsuiteContainer) {
+            try {
+                const ReactDOM = (window as any).ReactDOM || require('react-dom');
+                if (ReactDOM && ReactDOM.unmountComponentAtNode) {
+                    const reactRoot = this.modsuiteContainer.querySelector('#modsuite-react-root');
+                    if (reactRoot) {
+                        ReactDOM.unmountComponentAtNode(reactRoot);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to unmount ModSuite:', error);
+            }
+
+            this.modsuiteContainer.remove();
+            this.modsuiteContainer = null;
+        }
     },
 
     // No patches for now - just context menus
