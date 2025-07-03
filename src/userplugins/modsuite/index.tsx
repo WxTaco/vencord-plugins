@@ -11,10 +11,10 @@ import { classNameFactory } from "@api/Styles";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { ChannelStore, GuildStore, Menu, React, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
+import { ChannelStore, Menu, React, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
 
-import { FloatingButtonManager } from "./components/FloatingButton";
-import { ModPanel } from "./components/ModPanel";
+// import { FloatingButtonManager } from "./components/FloatingButton";
+// import { ModPanel } from "./components/ModPanel";
 import { settings } from "./settings";
 import { checkMonitoringStatus, initializeMessageMonitoring } from "./utils/messageMonitor";
 import { hasAnyModPermissions } from "./utils/permissions";
@@ -24,31 +24,9 @@ const cl = classNameFactory("ms-");
 // Global state for ModSuite panel
 let modSuitePanelOpen = false;
 
-// ModSuite Manager Component
-const ModSuiteManager = () => {
+// Simple ModSuite Panel Component
+const SimpleModSuitePanel = () => {
     const [isPanelOpen, setIsPanelOpen] = useState(modSuitePanelOpen);
-    const [currentChannel, setCurrentChannel] = useState(() => {
-        const channelId = SelectedChannelStore.getChannelId();
-        return ChannelStore.getChannel(channelId);
-    });
-    const [currentGuild, setCurrentGuild] = useState(() => {
-        return currentChannel?.guild_id ? GuildStore.getGuild(currentChannel.guild_id) : undefined;
-    });
-
-    const handleTogglePanel = () => {
-        if (!isPanelOpen) {
-            const channelId = SelectedChannelStore.getChannelId();
-            const channel = ChannelStore.getChannel(channelId);
-            const guild = channel?.guild_id ? GuildStore.getGuild(channel.guild_id) : undefined;
-
-            setCurrentChannel(channel);
-            setCurrentGuild(guild);
-        }
-
-        const newState = !isPanelOpen;
-        setIsPanelOpen(newState);
-        modSuitePanelOpen = newState;
-    };
 
     const handleClosePanel = () => {
         setIsPanelOpen(false);
@@ -58,26 +36,80 @@ const ModSuiteManager = () => {
     // Listen for external panel open requests
     React.useEffect(() => {
         const handleOpenPanel = () => {
-            handleTogglePanel();
+            setIsPanelOpen(true);
+            modSuitePanelOpen = true;
         };
 
         document.addEventListener('modsuite:open-panel', handleOpenPanel);
         return () => document.removeEventListener('modsuite:open-panel', handleOpenPanel);
     }, []);
 
+    if (!isPanelOpen) return null;
+
     return (
         <ErrorBoundary noop>
-            <div className={cl("container")}>
-                {settings.store.showFloatingButton && (
-                    <FloatingButtonManager onToggle={handleTogglePanel} />
-                )}
-
-                <ModPanel
-                    channel={currentChannel}
-                    guild={currentGuild}
-                    isVisible={isPanelOpen}
-                    onClose={handleClosePanel}
-                />
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 10000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }} onClick={handleClosePanel}>
+                <div style={{
+                    width: '400px',
+                    height: '300px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    padding: '20px',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+                }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '16px',
+                        paddingBottom: '8px',
+                        borderBottom: '1px solid #eee'
+                    }}>
+                        <h2 style={{ margin: 0, color: '#ec4899' }}>ModSuite</h2>
+                        <button
+                            onClick={handleClosePanel}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '18px',
+                                cursor: 'pointer',
+                                color: '#666'
+                            }}
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <div style={{ color: '#333' }}>
+                        <p>🎉 ModSuite is working!</p>
+                        <p>This is a basic panel. The full features will be added once this is working.</p>
+                        <p>Current channel: {SelectedChannelStore.getChannelId()}</p>
+                        <button
+                            onClick={handleClosePanel}
+                            style={{
+                                backgroundColor: '#ec4899',
+                                color: 'white',
+                                border: 'none',
+                                padding: '8px 16px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                marginTop: '16px'
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
             </div>
         </ErrorBoundary>
     );
@@ -177,9 +209,6 @@ export default definePlugin({
         // Initialize message monitoring
         initializeMessageMonitoring();
 
-        // Add ModSuite to DOM
-        this.addModSuiteToDOM();
-
         // Show success toast
         showToast("ModSuite plugin loaded successfully!", Toasts.Type.SUCCESS);
     },
@@ -189,71 +218,22 @@ export default definePlugin({
 
         // Stop message monitoring
         checkMonitoringStatus();
-
-        // Remove ModSuite from DOM
-        this.removeModSuiteFromDOM();
     },
 
-    addModSuiteToDOM() {
-        if (this.modsuiteContainer) return;
-
-        const container = document.createElement('div');
-        container.id = 'modsuite-container';
-        container.style.position = 'fixed';
-        container.style.top = '0';
-        container.style.left = '0';
-        container.style.width = '100%';
-        container.style.height = '100%';
-        container.style.pointerEvents = 'none';
-        container.style.zIndex = '9999';
-
-        document.body.appendChild(container);
-        this.modsuiteContainer = container;
-
-        // Use a simple approach to render React component
-        const renderComponent = () => {
-            try {
-                // Create a root element for React
-                const reactRoot = document.createElement('div');
-                reactRoot.id = 'modsuite-react-root';
-                container.appendChild(reactRoot);
-
-                // Use React.render (legacy method that should work)
-                const ReactDOM = (window as any).ReactDOM || require('react-dom');
-                if (ReactDOM && ReactDOM.render) {
-                    ReactDOM.render(React.createElement(ModSuiteManager), reactRoot);
-                } else {
-                    console.error('ReactDOM not available');
-                }
-            } catch (error) {
-                console.error('Failed to render ModSuite:', error);
+    // Patch to inject ModSuite into Discord's app
+    patches: [
+        {
+            find: "Messages.ACTIVITY_PANEL",
+            replacement: {
+                match: /(?<=\i\.createElement\(\i\.Fragment,null,)/,
+                replace: "$self.renderModSuite(),"
             }
-        };
-
-        // Delay rendering to ensure DOM is ready
-        setTimeout(renderComponent, 100);
-    },
-
-    removeModSuiteFromDOM() {
-        if (this.modsuiteContainer) {
-            try {
-                const ReactDOM = (window as any).ReactDOM || require('react-dom');
-                if (ReactDOM && ReactDOM.unmountComponentAtNode) {
-                    const reactRoot = this.modsuiteContainer.querySelector('#modsuite-react-root');
-                    if (reactRoot) {
-                        ReactDOM.unmountComponentAtNode(reactRoot);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to unmount ModSuite:', error);
-            }
-
-            this.modsuiteContainer.remove();
-            this.modsuiteContainer = null;
         }
-    },
+    ],
 
-    // No patches for now - just context menus
+    renderModSuite() {
+        return React.createElement(SimpleModSuitePanel);
+    },
 
 
 
