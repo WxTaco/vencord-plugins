@@ -7,67 +7,15 @@
 import "./styles.css";
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
-import { classNameFactory } from "@api/Styles";
-import ErrorBoundary from "@components/ErrorBoundary";
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { ChannelStore, GuildStore, Menu, React, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
+import { ChannelStore, Menu, SelectedChannelStore, showToast, Toasts } from "@webpack/common";
 
-import { FloatingButtonManager } from "./components/FloatingButton";
-import { ModPanel } from "./components/ModPanel";
 import { settings } from "./settings";
 import { checkMonitoringStatus, initializeMessageMonitoring } from "./utils/messageMonitor";
 import { hasAnyModPermissions } from "./utils/permissions";
 
-const cl = classNameFactory("ms-");
-
-// Toolbar wrapper component that adds ModSuite to Discord's UI
-function ToolbarWrapper({ children }: { children: React.ReactNode[]; }) {
-    const [isPanelOpen, setIsPanelOpen] = useState(false);
-    const [currentChannel, setCurrentChannel] = useState(() => {
-        const channelId = SelectedChannelStore.getChannelId();
-        return ChannelStore.getChannel(channelId);
-    });
-    const [currentGuild, setCurrentGuild] = useState(() => {
-        return currentChannel?.guild_id ? GuildStore.getGuild(currentChannel.guild_id) : undefined;
-    });
-
-    const handleTogglePanel = () => {
-        if (!isPanelOpen) {
-            const channelId = SelectedChannelStore.getChannelId();
-            const channel = ChannelStore.getChannel(channelId);
-            const guild = channel?.guild_id ? GuildStore.getGuild(channel.guild_id) : undefined;
-
-            setCurrentChannel(channel);
-            setCurrentGuild(guild);
-        }
-        setIsPanelOpen(!isPanelOpen);
-    };
-
-    const handleClosePanel = () => {
-        setIsPanelOpen(false);
-    };
-
-    return (
-        <>
-            {children}
-            <ErrorBoundary noop>
-                <div className={cl("container")}>
-                    {settings.store.showFloatingButton && (
-                        <FloatingButtonManager onToggle={handleTogglePanel} />
-                    )}
-
-                    <ModPanel
-                        channel={currentChannel}
-                        guild={currentGuild}
-                        isVisible={isPanelOpen}
-                        onClose={handleClosePanel}
-                    />
-                </div>
-            </ErrorBoundary>
-        </>
-    );
-}
+// TODO: Add floating button component later
 
 
 
@@ -162,8 +110,8 @@ export default definePlugin({
         // Initialize message monitoring
         initializeMessageMonitoring();
 
-        // Add ModSuite to DOM
-        this.addModSuiteToDOM();
+        // Show success toast
+        showToast("ModSuite plugin loaded successfully!", Toasts.Type.SUCCESS);
     },
 
     stop() {
@@ -171,42 +119,9 @@ export default definePlugin({
 
         // Stop message monitoring
         checkMonitoringStatus();
-
-        // Remove ModSuite from DOM
-        this.removeModSuiteFromDOM();
     },
 
-    addModSuiteToDOM() {
-        if (this.modsuiteContainer) return;
-
-        const container = document.createElement('div');
-        container.id = 'modsuite-container';
-        container.style.position = 'fixed';
-        container.style.top = '0';
-        container.style.left = '0';
-        container.style.width = '100%';
-        container.style.height = '100%';
-        container.style.pointerEvents = 'none';
-        container.style.zIndex = '9999';
-
-        document.body.appendChild(container);
-        this.modsuiteContainer = container;
-
-        // Render ModSuite
-        const { render } = require("@webpack/common").ReactDOM || require("react-dom");
-        render(React.createElement(ToolbarWrapper, { children: [] }), container);
-    },
-
-    removeModSuiteFromDOM() {
-        if (this.modsuiteContainer) {
-            const { unmountComponentAtNode } = require("@webpack/common").ReactDOM || require("react-dom");
-            unmountComponentAtNode(this.modsuiteContainer);
-            this.modsuiteContainer.remove();
-            this.modsuiteContainer = null;
-        }
-    },
-
-    // No patches needed - using direct DOM manipulation
+    // No patches for now - just context menus
 
 
 
