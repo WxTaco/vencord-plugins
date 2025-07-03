@@ -11,7 +11,7 @@ import { classNameFactory } from "@api/Styles";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { ChannelStore, GuildStore, Menu, React, ReactDOM, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
+import { ChannelStore, GuildStore, Menu, React, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
 
 import { FloatingButtonManager } from "./components/FloatingButton";
 import { ModPanel } from "./components/ModPanel";
@@ -21,8 +21,8 @@ import { hasAnyModPermissions } from "./utils/permissions";
 
 const cl = classNameFactory("ms-");
 
-// Main ModSuite Manager Component
-const ModSuiteManager = () => {
+// Toolbar wrapper component that adds ModSuite to Discord's UI
+function ToolbarWrapper({ children }: { children: React.ReactNode[]; }) {
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [currentChannel, setCurrentChannel] = useState(() => {
         const channelId = SelectedChannelStore.getChannelId();
@@ -33,7 +33,6 @@ const ModSuiteManager = () => {
     });
 
     const handleTogglePanel = () => {
-        // Update current channel/guild when opening panel
         if (!isPanelOpen) {
             const channelId = SelectedChannelStore.getChannelId();
             const channel = ChannelStore.getChannel(channelId);
@@ -42,7 +41,6 @@ const ModSuiteManager = () => {
             setCurrentChannel(channel);
             setCurrentGuild(guild);
         }
-
         setIsPanelOpen(!isPanelOpen);
     };
 
@@ -51,25 +49,30 @@ const ModSuiteManager = () => {
     };
 
     return (
-        <ErrorBoundary noop>
-            <div className={cl("container")}>
-                {settings.store.showFloatingButton && (
-                    <FloatingButtonManager onToggle={handleTogglePanel} />
-                )}
+        <>
+            {children}
+            <ErrorBoundary noop>
+                <div className={cl("container")}>
+                    {settings.store.showFloatingButton && (
+                        <FloatingButtonManager onToggle={handleTogglePanel} />
+                    )}
 
-                <ModPanel
-                    channel={currentChannel}
-                    guild={currentGuild}
-                    isVisible={isPanelOpen}
-                    onClose={handleClosePanel}
-                />
-            </div>
-        </ErrorBoundary>
+                    <ModPanel
+                        channel={currentChannel}
+                        guild={currentGuild}
+                        isVisible={isPanelOpen}
+                        onClose={handleClosePanel}
+                    />
+                </div>
+            </ErrorBoundary>
+        </>
     );
-};
+}
+
+
 
 // Context menu patches for user actions
-const userContextPatch: NavContextMenuPatchCallback = (children, { user, channel, guild }) => {
+const userContextPatch: NavContextMenuPatchCallback = (children, { user, channel }) => {
     if (!user || !settings.store.enableContextMenu) return;
 
     const currentChannel = channel || ChannelStore.getChannel(SelectedChannelStore.getChannelId());
@@ -142,7 +145,7 @@ const channelContextPatch: NavContextMenuPatchCallback = (children, { channel })
 export default definePlugin({
     name: "ModSuite",
     description: "Comprehensive moderation toolkit with floating button, quick actions, mass deletion, ping monitoring, and enhanced audit logs",
-    authors: [{ name: "ModSuite", id: 0n }], // Replace with actual author info
+    authors: [Devs.Ven], // Using existing dev for compatibility
 
     settings,
 
@@ -156,63 +159,56 @@ export default definePlugin({
     start() {
         console.log("ModSuite plugin started");
 
-        // Initialize any necessary state or listeners
-        this.initializePlugin();
-
         // Initialize message monitoring
         initializeMessageMonitoring();
+
+        // Add ModSuite to DOM
+        this.addModSuiteToDOM();
     },
 
     stop() {
         console.log("ModSuite plugin stopped");
 
-        // Cleanup any listeners or state
-        this.cleanupPlugin();
-
         // Stop message monitoring
         checkMonitoringStatus();
+
+        // Remove ModSuite from DOM
+        this.removeModSuiteFromDOM();
     },
 
-    initializePlugin() {
-        // Add the ModSuite manager to the DOM
+    addModSuiteToDOM() {
+        if (this.modsuiteContainer) return;
+
         const container = document.createElement('div');
-        container.id = 'modsuite-root';
+        container.id = 'modsuite-container';
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.pointerEvents = 'none';
+        container.style.zIndex = '9999';
+
         document.body.appendChild(container);
+        this.modsuiteContainer = container;
 
-        // Render the ModSuite manager
-        ReactDOM.render(<ModSuiteManager />, container);
-
-        this.container = container;
+        // Render ModSuite
+        const { render } = require("@webpack/common").ReactDOM || require("react-dom");
+        render(React.createElement(ToolbarWrapper, { children: [] }), container);
     },
 
-    cleanupPlugin() {
-        // Cleanup React root and container
-        if (this.container) {
-            ReactDOM.unmountComponentAtNode(this.container);
-            this.container.remove();
-            this.container = null;
+    removeModSuiteFromDOM() {
+        if (this.modsuiteContainer) {
+            const { unmountComponentAtNode } = require("@webpack/common").ReactDOM || require("react-dom");
+            unmountComponentAtNode(this.modsuiteContainer);
+            this.modsuiteContainer.remove();
+            this.modsuiteContainer = null;
         }
     },
 
-    // Plugin patches for integrating with Discord
-    patches: [
-        // Patch to inject our styles
-        {
-            find: "document.head.appendChild",
-            replacement: {
-                match: /document\.head\.appendChild\((\i)\)/,
-                replace: "$&;$self.injectStyles?.($1)"
-            },
-            predicate: () => settings.store.useCustomTheme
-        }
-    ],
+    // No patches needed - using direct DOM manipulation
 
-    injectStyles(element: HTMLElement) {
-        // Inject our custom styles if needed
-        if (element?.tagName === 'STYLE' && settings.store.useCustomTheme) {
-            // Add any dynamic style injection here if needed
-        }
-    },
+
 
     // Utility methods for other components to use
     openModPanel() {
