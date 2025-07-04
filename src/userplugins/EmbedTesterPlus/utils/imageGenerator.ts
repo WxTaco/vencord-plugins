@@ -60,19 +60,16 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             ctx.closePath();
         };
 
-        // Embed background with rounded corners
+        // Embed background (sharp corners for the embed itself)
         const embedHeight = canvas.height - 100;
-        const borderRadius = 12;
 
         ctx.fillStyle = theme.embedBg;
-        drawRoundedRect(embedX, embedY, embedWidth, embedHeight, borderRadius);
-        ctx.fill();
+        ctx.fillRect(embedX, embedY, embedWidth, embedHeight);
 
-        // Left border (color) with rounded corners
+        // Left border (color) - sharp corners
         const borderColor = embedData.color ? decimalToHex(embedData.color) : '#5865f2';
         ctx.fillStyle = borderColor;
-        drawRoundedRect(embedX, embedY, 4, embedHeight, 2);
-        ctx.fill();
+        ctx.fillRect(embedX, embedY, 4, embedHeight);
 
         // Helper function to draw text
         const drawText = (text: string, x: number, y: number, options: {
@@ -269,6 +266,21 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             finalCanvas.width = finalWidth;
             finalCanvas.height = finalHeight;
 
+            // Helper function to draw rounded rectangle for final canvas
+            const drawRoundedRect = (x: number, y: number, width: number, height: number, radius: number) => {
+                finalCtx.beginPath();
+                finalCtx.moveTo(x + radius, y);
+                finalCtx.lineTo(x + width - radius, y);
+                finalCtx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                finalCtx.lineTo(x + width, y + height - radius);
+                finalCtx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                finalCtx.lineTo(x + radius, y + height);
+                finalCtx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                finalCtx.lineTo(x, y + radius);
+                finalCtx.quadraticCurveTo(x, y, x + radius, y);
+                finalCtx.closePath();
+            };
+
             // Create dark pink gradient background
             const gradient = finalCtx.createRadialGradient(
                 finalWidth / 2, finalHeight / 3, 0,
@@ -305,11 +317,29 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             const embedCenterX = (finalWidth - canvas.width) / 2;
             const embedCenterY = 30; // Fixed top position
 
-            // Add subtle shadow behind embed
-            finalCtx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-            finalCtx.shadowBlur = 20;
+            // Add rounded gray background behind the embed
+            const bgPadding = 20;
+            const bgX = embedCenterX - bgPadding;
+            const bgY = embedCenterY - bgPadding;
+            const bgWidth = canvas.width + bgPadding * 2;
+            const bgHeight = actualContentHeight + bgPadding * 2;
+            const bgRadius = 16;
+
+            // Draw rounded background with shadow
+            finalCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            finalCtx.shadowBlur = 25;
             finalCtx.shadowOffsetX = 0;
-            finalCtx.shadowOffsetY = 8;
+            finalCtx.shadowOffsetY = 12;
+
+            finalCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            drawRoundedRect(bgX, bgY, bgWidth, bgHeight, bgRadius);
+            finalCtx.fill();
+
+            // Reset shadow for embed
+            finalCtx.shadowColor = 'transparent';
+            finalCtx.shadowBlur = 0;
+            finalCtx.shadowOffsetX = 0;
+            finalCtx.shadowOffsetY = 0;
 
             // Copy embed content to centered position
             finalCtx.drawImage(canvas, embedCenterX, embedCenterY);
