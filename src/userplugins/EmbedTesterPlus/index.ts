@@ -46,8 +46,8 @@ interface SavedEmbeds {
 const settings = definePluginSettings({
     apiUrl: {
         type: OptionType.STRING,
-        description: "Your bot's API URL.)",
-        default: "api.wrapped.site"
+        description: "Your bot's API URL (include https://)",
+        default: "https://api.wrapped.site"
     },
     authToken: {
         type: OptionType.STRING,
@@ -73,36 +73,59 @@ const settings = definePluginSettings({
 
 async function fetchSavedEmbeds(guildId: string): Promise<SavedEmbeds | null> {
     if (!settings.store.enableBotIntegration || !settings.store.apiUrl || !settings.store.authToken) {
+        console.log("🌸 Bot integration disabled or missing config:", {
+            enabled: settings.store.enableBotIntegration,
+            hasApiUrl: !!settings.store.apiUrl,
+            hasToken: !!settings.store.authToken
+        });
         return null;
     }
 
     try {
-        const response = await fetch(`${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`, {
+        const url = `${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`;
+        console.log("🌸 Fetching embeds from:", url);
+        console.log("🌸 Using token:", settings.store.authToken.substring(0, 10) + "...");
+
+        const response = await fetch(url, {
             headers: {
                 "Authorization": `Bearer ${settings.store.authToken}`,
                 "Content-Type": "application/json"
             }
         });
 
+        console.log("🌸 Fetch response:", response.status, response.statusText);
+
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error("🌸 Fetch failed:", response.status, errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log("🌸 Fetched embeds data:", data);
         return data.success ? data.embeds : null;
     } catch (error) {
-        console.error("Failed to fetch saved embeds:", error);
+        console.error("🌸 Failed to fetch saved embeds:", error);
         return null;
     }
 }
 
 async function saveEmbed(guildId: string, name: string, embed: SavedEmbed): Promise<boolean> {
     if (!settings.store.enableBotIntegration || !settings.store.apiUrl || !settings.store.authToken) {
+        console.log("🌸 Save failed - Bot integration disabled or missing config:", {
+            enabled: settings.store.enableBotIntegration,
+            hasApiUrl: !!settings.store.apiUrl,
+            hasToken: !!settings.store.authToken
+        });
         return false;
     }
 
     try {
-        const response = await fetch(`${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`, {
+        const url = `${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`;
+        console.log("🌸 Saving embed to:", url);
+        console.log("🌸 Saving embed:", name, embed);
+
+        const response = await fetch(url, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${settings.store.authToken}`,
@@ -111,14 +134,19 @@ async function saveEmbed(guildId: string, name: string, embed: SavedEmbed): Prom
             body: JSON.stringify({ name, embed })
         });
 
+        console.log("🌸 Save response:", response.status, response.statusText);
+
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error("🌸 Save failed:", response.status, errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log("🌸 Save response data:", data);
         return data.success;
     } catch (error) {
-        console.error("Failed to save embed:", error);
+        console.error("🌸 Failed to save embed:", error);
         return false;
     }
 }
@@ -168,6 +196,24 @@ export default definePlugin({
             inputType: ApplicationCommandInputType.BUILT_IN,
             execute: async (_, ctx) => {
                 await openEmbedTester(ctx, "create");
+            }
+        },
+        {
+            name: "embed-test-bot",
+            description: "Test bot integration for embed templates 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            execute: async (_, ctx) => {
+                if (!ctx.guild?.id) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: "❌ This command can only be used in a server!"
+                    });
+                    return;
+                }
+
+                const status = await testBotIntegration(ctx.guild.id);
+                sendBotMessage(ctx.channel.id, {
+                    content: `🌸 **Bot Integration Test**\n${status}`
+                });
             }
         }
     ],
@@ -280,5 +326,55 @@ async function openEmbedTester(ctx?: any, action: string = "create", templateNam
     }));
 }
 
+// Test bot integration function
+async function testBotIntegration(guildId: string): Promise<string> {
+    console.log("🌸 Testing bot integration...");
+    console.log("🌸 Settings:", {
+        enabled: settings.store.enableBotIntegration,
+        apiUrl: settings.store.apiUrl,
+        hasToken: !!settings.store.authToken,
+        tokenPreview: settings.store.authToken ? settings.store.authToken.substring(0, 10) + "..." : "none"
+    });
+
+    if (!settings.store.enableBotIntegration) {
+        return "❌ Bot integration is disabled in plugin settings";
+    }
+
+    if (!settings.store.apiUrl) {
+        return "❌ API URL not configured in plugin settings";
+    }
+
+    if (!settings.store.authToken) {
+        return "❌ Auth token not configured in plugin settings";
+    }
+
+    try {
+        const url = `${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`;
+        console.log("🌸 Testing connection to:", url);
+
+        const response = await fetch(url, {
+            headers: {
+                "Authorization": `Bearer ${settings.store.authToken}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        console.log("🌸 Test response:", response.status, response.statusText);
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log("🌸 Test response data:", data);
+            return `✅ Bot integration working! Found ${Object.keys(data.embeds || {}).length} saved templates`;
+        } else {
+            const errorText = await response.text();
+            console.error("🌸 Test failed:", response.status, errorText);
+            return `❌ API Error: ${response.status} ${response.statusText}`;
+        }
+    } catch (error) {
+        console.error("🌸 Test connection failed:", error);
+        return `❌ Connection failed: ${error instanceof Error ? error.message : String(error)}`;
+    }
+}
+
 // Export for use in other components
-export { openEmbedTester, fetchSavedEmbeds, saveEmbed };
+export { openEmbedTester, fetchSavedEmbeds, saveEmbed, testBotIntegration };
