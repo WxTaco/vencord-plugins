@@ -5,7 +5,7 @@
  */
 
 import { React, useState } from "@webpack/common";
-import { exportToCSV, exportToPNG, exportToJSON } from "../utils/exportUtils";
+import { exportToCSV, exportToPNG, exportToJSON } from "../utils/exportUtils.js";
 
 interface ExportControlsProps {
     activityData: any;
@@ -33,24 +33,24 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
             switch (format) {
                 case 'csv':
                     await exportToCSV(activityData, filename);
-                    setExportStatus('📊 CSV exported successfully!');
+                    setExportStatus('CSV exported successfully!');
                     break;
                 case 'png':
                     await exportToPNG(activityData, filename, themeColors);
-                    setExportStatus('🖼️ PNG exported successfully!');
+                    setExportStatus('PNG exported successfully!');
                     break;
                 case 'json':
                     await exportToJSON(activityData, filename);
-                    setExportStatus('📄 JSON exported successfully!');
+                    setExportStatus('JSON exported successfully!');
                     break;
             }
         } catch (error) {
             console.error('Export failed:', error);
-            setExportStatus('❌ Export failed. Please try again.');
+            setExportStatus('Export failed. Please try again.');
         }
 
         setIsExporting(false);
-        
+
         // Clear status after 3 seconds
         setTimeout(() => setExportStatus(null), 3000);
     };
@@ -77,13 +77,13 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
             borderRadius: "12px",
             boxShadow: "0 4px 6px rgba(79, 195, 247, 0.1)"
         }}>
-            <h3 style={{ 
-                margin: "0 0 16px 0", 
+            <h3 style={{
+                margin: "0 0 16px 0",
                 color: "#0277bd",
                 fontSize: "18px",
                 fontWeight: "600"
             }}>
-                📤 Export Data
+                Export Data
             </h3>
 
             <div style={{
@@ -98,17 +98,17 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                     borderRadius: "8px",
                     border: "1px solid #e3f2fd"
                 }}>
-                    <h4 style={{ 
-                        margin: "0 0 8px 0", 
+                    <h4 style={{
+                        margin: "0 0 8px 0",
                         color: "#0277bd",
                         fontSize: "14px",
                         fontWeight: "600"
                     }}>
-                        📊 CSV Export
+                        CSV Export
                     </h4>
-                    <p style={{ 
-                        margin: "0 0 12px 0", 
-                        fontSize: "12px", 
+                    <p style={{
+                        margin: "0 0 12px 0",
+                        fontSize: "12px",
                         color: "#666",
                         lineHeight: "1.4"
                     }}>
@@ -119,7 +119,7 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                         disabled={isExporting || !activityData}
                         style={buttonStyle(isExporting || !activityData)}
                     >
-                        {isExporting ? "⏳ Exporting..." : "📊 Export CSV"}
+                        {isExporting ? "Exporting..." : "Export CSV"}
                     </button>
                 </div>
 
@@ -129,17 +129,17 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                     borderRadius: "8px",
                     border: "1px solid #e3f2fd"
                 }}>
-                    <h4 style={{ 
-                        margin: "0 0 8px 0", 
+                    <h4 style={{
+                        margin: "0 0 8px 0",
                         color: "#0277bd",
                         fontSize: "14px",
                         fontWeight: "600"
                     }}>
-                        🖼️ PNG Export
+                        PNG Export
                     </h4>
-                    <p style={{ 
-                        margin: "0 0 12px 0", 
-                        fontSize: "12px", 
+                    <p style={{
+                        margin: "0 0 12px 0",
+                        fontSize: "12px",
                         color: "#666",
                         lineHeight: "1.4"
                     }}>
@@ -150,7 +150,7 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                         disabled={isExporting || !activityData}
                         style={buttonStyle(isExporting || !activityData)}
                     >
-                        {isExporting ? "⏳ Exporting..." : "🖼️ Export PNG"}
+                        {isExporting ? "Exporting..." : "Export PNG"}
                     </button>
                 </div>
 
@@ -160,17 +160,17 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                     borderRadius: "8px",
                     border: "1px solid #e3f2fd"
                 }}>
-                    <h4 style={{ 
-                        margin: "0 0 8px 0", 
+                    <h4 style={{
+                        margin: "0 0 8px 0",
                         color: "#0277bd",
                         fontSize: "14px",
                         fontWeight: "600"
                     }}>
-                        📄 JSON Export
+                        JSON Export
                     </h4>
-                    <p style={{ 
-                        margin: "0 0 12px 0", 
-                        fontSize: "12px", 
+                    <p style={{
+                        margin: "0 0 12px 0",
+                        fontSize: "12px",
                         color: "#666",
                         lineHeight: "1.4"
                     }}>
@@ -181,7 +181,7 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                         disabled={isExporting || !activityData}
                         style={buttonStyle(isExporting || !activityData)}
                     >
-                        {isExporting ? "⏳ Exporting..." : "📄 Export JSON"}
+                        {isExporting ? "Exporting..." : "Export JSON"}
                     </button>
                 </div>
             </div>
@@ -210,8 +210,8 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                 borderRadius: "8px",
                 border: "1px solid #4fc3f7"
             }}>
-                <h4 style={{ 
-                    margin: "0 0 8px 0", 
+                <h4 style={{
+                    margin: "0 0 8px 0",
                     color: "#0277bd",
                     fontSize: "14px",
                     fontWeight: "600"
@@ -239,17 +239,17 @@ export function ExportControls({ activityData, guildName, timeRange, themeColors
                 borderRadius: "8px",
                 border: "1px solid #e9ecef"
             }}>
-                <h4 style={{ 
-                    margin: "0 0 8px 0", 
+                <h4 style={{
+                    margin: "0 0 8px 0",
                     color: "#495057",
                     fontSize: "13px",
                     fontWeight: "600"
                 }}>
                     📊 Data Included in Export
                 </h4>
-                <div style={{ 
-                    fontSize: "11px", 
-                    color: "#6c757d", 
+                <div style={{
+                    fontSize: "11px",
+                    color: "#6c757d",
                     lineHeight: "1.4",
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",

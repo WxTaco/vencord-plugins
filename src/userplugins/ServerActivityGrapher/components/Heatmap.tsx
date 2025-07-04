@@ -86,7 +86,7 @@ export function Heatmap({ guildId, activityTracker, days, themeColors }: Heatmap
                 fontWeight: "600",
                 textAlign: "center"
             }}>
-                🔥 Activity Heatmap - Last {days} Days
+                Activity Heatmap - Last {days} Days
             </h3>
 
             <div style={{
@@ -235,17 +235,17 @@ export function Heatmap({ guildId, activityTracker, days, themeColors }: Heatmap
                     fontSize: "14px",
                     fontWeight: "600"
                 }}>
-                    💡 Activity Insights
+                    Activity Insights
                 </h4>
                 <div style={{ fontSize: "12px", color: "#01579b", lineHeight: "1.4" }}>
                     {maxValue > 0 ? (
                         <>
-                            <div>• Peak activity: {maxValue} messages in a single hour</div>
-                            <div>• Darker squares indicate higher message volume</div>
-                            <div>• Hover over squares to see detailed information</div>
+                            <div>Peak activity: {maxValue} messages in a single hour</div>
+                            <div>Darker squares indicate higher message volume</div>
+                            <div>Hover over squares to see detailed information</div>
                         </>
                     ) : (
-                        <div>• No activity data available for the selected time range</div>
+                        <div>No activity data available for the selected time range</div>
                     )}
                 </div>
             </div>

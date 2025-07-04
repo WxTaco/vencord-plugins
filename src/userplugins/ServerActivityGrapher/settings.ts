@@ -89,5 +89,35 @@ export const settings = definePluginSettings({
         description: "Use compact layout for smaller screens",
         default: false,
         restartNeeded: false
+    },
+    enableHistoryFetching: {
+        type: OptionType.BOOLEAN,
+        description: "Enable fetching message history from Discord API",
+        default: true,
+        restartNeeded: false
+    },
+    historyFetchDays: {
+        type: OptionType.NUMBER,
+        description: "Days of history to fetch from API (max 30)",
+        default: 7,
+        restartNeeded: false
+    },
+    maxMessagesPerChannel: {
+        type: OptionType.NUMBER,
+        description: "Maximum messages to fetch per channel",
+        default: 1000,
+        restartNeeded: false
+    },
+    apiRateLimit: {
+        type: OptionType.NUMBER,
+        description: "Delay between API requests (milliseconds)",
+        default: 1000,
+        restartNeeded: false
+    },
+    autoFetchOnOpen: {
+        type: OptionType.BOOLEAN,
+        description: "Automatically fetch history when opening analytics",
+        default: false,
+        restartNeeded: false
     }
 });

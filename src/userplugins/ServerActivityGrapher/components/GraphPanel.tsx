@@ -11,6 +11,7 @@ import { ActivityTracker } from "../utils/activityTracker";
 import { getTimeRanges, formatHour, formatDate } from "../utils/timeUtils";
 import { Heatmap } from "./Heatmap";
 import { ExportControls } from "./ExportControls";
+import { HistoryFetcher, fetchGuildChannels, estimateHistorySize } from "../utils/historyFetcher";
 import { settings } from "../settings";
 
 interface GraphPanelProps extends ModalProps {
@@ -26,6 +27,10 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
     const [loading, setLoading] = useState(true);
     const [autoRefresh, setAutoRefresh] = useState(true);
     const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+    const [historyFetcher] = useState(new HistoryFetcher());
+    const [fetchingHistory, setFetchingHistory] = useState(false);
+    const [fetchProgress, setFetchProgress] = useState<{ current: number; total: number; channel: string; } | null>(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     const guild = GuildStore.getGuild(guildId);
     const channels = guild ? GuildChannelStore.getChannels(guildId) : { SELECTABLE: [], VOCAL: [] };
@@ -73,6 +78,66 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
 
         return () => clearInterval(checkForUpdates);
     }, [autoRefresh, lastUpdate, guildId, activityTracker]);
+
+    // Auto-fetch history on open if enabled
+    useEffect(() => {
+        if (settings.store.autoFetchOnOpen && settings.store.enableHistoryFetching && !fetchingHistory) {
+            handleFetchHistory();
+        }
+    }, [guildId]);
+
+    const handleFetchHistory = async () => {
+        if (fetchingHistory || !settings.store.enableHistoryFetching) return;
+
+        setFetchingHistory(true);
+        setFetchProgress(null);
+
+        try {
+            const channelIds = textChannels.map(ch => ch.id);
+
+            if (channelIds.length === 0) {
+                console.warn("No text channels found to fetch history from");
+                return;
+            }
+
+            const result = await historyFetcher.fetchHistory({
+                guildId,
+                channelIds,
+                daysBack: Math.min(settings.store.historyFetchDays, 30),
+                maxMessagesPerChannel: settings.store.maxMessagesPerChannel,
+                onProgress: (progress) => {
+                    setFetchProgress(progress);
+                }
+            });
+
+            // Add fetched messages to activity tracker
+            for (const message of result.messages) {
+                activityTracker.trackMessage(message);
+            }
+
+            // Refresh the display
+            loadActivityData();
+            setLastUpdate(Date.now());
+
+            console.log(`Fetched ${result.totalMessages} messages from ${result.channelsProcessed} channels`);
+
+            if (result.errors.length > 0) {
+                console.warn("Some channels had errors:", result.errors);
+            }
+
+        } catch (error) {
+            console.error("Failed to fetch history:", error);
+        } finally {
+            setFetchingHistory(false);
+            setFetchProgress(null);
+        }
+    };
+
+    const stopHistoryFetch = () => {
+        historyFetcher.stop();
+        setFetchingHistory(false);
+        setFetchProgress(null);
+    };
 
     const loadActivityData = () => {
         setLoading(true);
@@ -177,7 +242,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                         fontWeight: "700",
                         textShadow: "0 1px 2px rgba(2, 119, 189, 0.1)"
                     }}>
-                        📊 Server Activity - {guild?.name || "Unknown Server"}
+                        Server Activity Analytics - {guild?.name || "Unknown Server"}
                     </h2>
                     <ModalCloseButton onClick={props.onClose} />
                 </div>
@@ -284,9 +349,9 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                 color: "#0277bd"
                             }}
                         >
-                            <option value="bar">📊 Bar Chart</option>
-                            <option value="line">📈 Line Chart</option>
-                            <option value="heatmap">🔥 Heatmap</option>
+                            <option value="bar">Bar Chart</option>
+                            <option value="line">Line Chart</option>
+                            <option value="heatmap">Heatmap</option>
                         </select>
                     </div>
 
@@ -319,7 +384,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                         transform: "scale(1.1)"
                                     }}
                                 />
-                                🔄 Live Updates
+                                Live Updates
                             </label>
                         </div>
                         <div style={{
@@ -331,6 +396,66 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                             Last: {new Date(lastUpdate).toLocaleTimeString()}
                         </div>
                     </div>
+
+                    {/* History Fetching Controls */}
+                    {settings.store.enableHistoryFetching && (
+                        <div style={{ flex: 1, minWidth: "200px" }}>
+                            <label style={{
+                                display: "block",
+                                marginBottom: "6px",
+                                fontSize: "13px",
+                                fontWeight: "600",
+                                color: "#0277bd"
+                            }}>
+                                History Fetching
+                            </label>
+                            <div style={{ display: "flex", gap: "8px", flexDirection: "column" }}>
+                                <button
+                                    onClick={handleFetchHistory}
+                                    disabled={fetchingHistory}
+                                    style={{
+                                        padding: "6px 12px",
+                                        background: fetchingHistory ? "#e0e0e0" : "linear-gradient(135deg, #29b6f6, #0277bd)",
+                                        color: fetchingHistory ? "#999" : "white",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        fontSize: "12px",
+                                        fontWeight: "600",
+                                        cursor: fetchingHistory ? "not-allowed" : "pointer",
+                                        boxShadow: fetchingHistory ? "none" : "0 2px 4px rgba(2, 119, 189, 0.3)"
+                                    }}
+                                >
+                                    {fetchingHistory ? "Fetching..." : "Fetch History"}
+                                </button>
+                                {fetchingHistory && (
+                                    <button
+                                        onClick={stopHistoryFetch}
+                                        style={{
+                                            padding: "4px 8px",
+                                            background: "#f44336",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "4px",
+                                            fontSize: "11px",
+                                            cursor: "pointer"
+                                        }}
+                                    >
+                                        Stop
+                                    </button>
+                                )}
+                            </div>
+                            {fetchProgress && (
+                                <div style={{
+                                    fontSize: "10px",
+                                    color: "#666",
+                                    marginTop: "4px",
+                                    fontStyle: "italic"
+                                }}>
+                                    {fetchProgress.current}/{fetchProgress.total} channels
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {loading ? (
@@ -368,7 +493,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                         fontSize: "18px",
                                         fontWeight: "600"
                                     }}>
-                                        {chartType === "bar" ? "📊" : "📈"} Message Activity
+                                        Message Activity ({chartType === "bar" ? "Bar Chart" : "Line Chart"})
                                     </h3>
 
                                     {/* Enhanced chart visualization */}
@@ -692,7 +817,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                     fontSize: "18px",
                                     fontWeight: "600"
                                 }}>
-                                    📈 Trend Analysis - {timeRange.toUpperCase()} vs Previous Period
+                                    Trend Analysis - {timeRange.toUpperCase()} vs Previous Period
                                 </h3>
 
                                 <div style={{
@@ -707,7 +832,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                         border: "1px solid #e3f2fd"
                                     }}>
                                         <h4 style={{ margin: "0 0 8px 0", color: "#0277bd", fontSize: "14px" }}>
-                                            📊 Activity Trend
+                                            Activity Trend
                                         </h4>
                                         <div style={{ fontSize: "12px", color: "#666", lineHeight: "1.4" }}>
                                             <div>Current: {activityData.trends.current.messages} messages</div>
@@ -730,7 +855,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                         border: "1px solid #e3f2fd"
                                     }}>
                                         <h4 style={{ margin: "0 0 8px 0", color: "#0277bd", fontSize: "14px" }}>
-                                            👥 User Engagement
+                                            User Engagement
                                         </h4>
                                         <div style={{ fontSize: "12px", color: "#666", lineHeight: "1.4" }}>
                                             <div>Current: {activityData.trends.current.users} active users</div>
@@ -753,7 +878,7 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                         border: "1px solid #e3f2fd"
                                     }}>
                                         <h4 style={{ margin: "0 0 8px 0", color: "#0277bd", fontSize: "14px" }}>
-                                            📊 Overall Trend
+                                            Overall Trend
                                         </h4>
                                         <div style={{ fontSize: "14px", fontWeight: "600", marginTop: "8px" }}>
                                             <span style={{
@@ -761,8 +886,8 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
                                                     activityData.trends.trend === 'decreasing' ? "#f44336" : "#ff9800",
                                                 textTransform: "capitalize"
                                             }}>
-                                                {activityData.trends.trend === 'increasing' ? "📈 Increasing" :
-                                                    activityData.trends.trend === 'decreasing' ? "📉 Decreasing" : "📊 Stable"}
+                                                {activityData.trends.trend === 'increasing' ? "↗ Increasing" :
+                                                    activityData.trends.trend === 'decreasing' ? "↘ Decreasing" : "→ Stable"}
                                             </span>
                                         </div>
                                         <div style={{ fontSize: "11px", color: "#666", marginTop: "4px" }}>
