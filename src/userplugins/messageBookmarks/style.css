@@ -1,0 +1,923 @@
+/* Message Bookmarks Plugin Styles - Pink Theme */
+
+:root {
+    --bookmark-pink-primary: #d63384;
+    --bookmark-pink-secondary: #b02a5b;
+    --bookmark-pink-light: #f8d7da;
+    --bookmark-pink-dark: #842029;
+    --bookmark-pink-pale: #f5c2c7;
+    --bookmark-bg-primary: #1a1a1a;
+    --bookmark-bg-secondary: #2d2d30;
+    --bookmark-bg-tertiary: #3e3e42;
+    --bookmark-text-primary: #ffffff;
+    --bookmark-text-secondary: #cccccc;
+    --bookmark-text-muted: #999999;
+    --bookmark-border: #d63384;
+    --bookmark-hover: rgba(214, 51, 132, 0.1);
+    --bookmark-success: #198754;
+    --bookmark-danger: #dc3545;
+    --bookmark-warning: #fd7e14;
+}
+
+.vc-bookmark-manager {
+    padding: 20px;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--bookmark-bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--bookmark-pink-primary);
+    box-shadow: 0 4px 16px rgba(214, 51, 132, 0.15);
+    color: var(--bookmark-text-primary);
+}
+
+/* Tab Navigation */
+.vc-bookmark-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--bookmark-pink-primary);
+    padding-bottom: 12px;
+}
+
+.vc-bookmark-tab {
+    padding: 10px 20px;
+    background: var(--bookmark-bg-secondary);
+    border: 1px solid var(--bookmark-bg-tertiary);
+    border-radius: 8px;
+    color: var(--bookmark-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.vc-bookmark-tab:hover {
+    background: var(--bookmark-bg-tertiary);
+    color: var(--bookmark-text-primary);
+    border-color: var(--bookmark-pink-primary);
+}
+
+.vc-bookmark-tab.active {
+    background: var(--bookmark-pink-primary);
+    color: white;
+    border-color: var(--bookmark-pink-primary);
+}
+
+/* Main Content */
+.vc-bookmark-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Filters */
+.vc-bookmark-filters {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--bookmark-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--bookmark-bg-tertiary);
+}
+
+.vc-bookmark-search {
+    margin-bottom: 16px;
+}
+
+.vc-bookmark-search input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bookmark-bg-primary);
+    border: 1px solid var(--bookmark-bg-tertiary);
+    border-radius: 6px;
+    color: var(--bookmark-text-primary);
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.vc-bookmark-search input:focus {
+    outline: none;
+    border-color: var(--bookmark-pink-primary);
+    box-shadow: 0 0 0 2px rgba(214, 51, 132, 0.2);
+}
+
+.vc-bookmark-search input::placeholder {
+    color: var(--bookmark-text-muted);
+}
+
+.vc-bookmark-filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+}
+
+.vc-bookmark-filter-item {
+    flex: 1;
+}
+
+.vc-bookmark-filter-item select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bookmark-bg-primary);
+    border: 2px solid var(--bookmark-pink-light);
+    border-radius: 8px;
+    color: var(--bookmark-text-primary);
+    font-size: 14px;
+}
+
+.vc-bookmark-filter-item select:focus {
+    outline: none;
+    border-color: var(--bookmark-pink-primary);
+}
+
+/* Main Layout */
+.vc-bookmark-main {
+    flex: 1;
+    display: flex;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.vc-bookmark-list-container {
+    flex: 1;
+    min-width: 350px;
+    overflow: hidden;
+}
+
+.vc-bookmark-editor-container {
+    flex: 1;
+    min-width: 450px;
+    overflow: auto;
+}
+
+/* Bookmark List */
+.vc-bookmark-list {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--bookmark-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--bookmark-bg-tertiary);
+    padding: 16px;
+}
+
+.vc-bookmark-list-header {
+    padding: 12px 0;
+    border-bottom: 2px solid var(--bookmark-pink-primary);
+    margin-bottom: 16px;
+    color: var(--bookmark-text-primary);
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.vc-bookmark-items {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.vc-bookmark-items::-webkit-scrollbar {
+    width: 8px;
+}
+
+.vc-bookmark-items::-webkit-scrollbar-track {
+    background: var(--bookmark-bg-primary);
+    border-radius: 4px;
+}
+
+.vc-bookmark-items::-webkit-scrollbar-thumb {
+    background: var(--bookmark-pink-primary);
+    border-radius: 4px;
+}
+
+.vc-bookmark-items::-webkit-scrollbar-thumb:hover {
+    background: var(--bookmark-pink-secondary);
+}
+
+.vc-bookmark-item {
+    padding: 14px;
+    margin-bottom: 8px;
+    background: var(--bookmark-bg-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--bookmark-bg-tertiary);
+}
+
+.vc-bookmark-item:hover {
+    background: var(--bookmark-hover);
+    border-color: var(--bookmark-pink-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(214, 51, 132, 0.15);
+}
+
+.vc-bookmark-item-selected {
+    border-color: var(--bookmark-pink-primary);
+    background: rgba(214, 51, 132, 0.1);
+    box-shadow: 0 2px 8px rgba(214, 51, 132, 0.2);
+}
+
+.vc-bookmark-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.vc-bookmark-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: var(--bookmark-text-primary);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.vc-bookmark-author:hover {
+    color: var(--bookmark-pink-light);
+    transform: scale(1.05);
+}
+
+.vc-bookmark-author img {
+    border-radius: 50%;
+    border: 2px solid var(--bookmark-pink-light);
+    transition: all 0.3s ease;
+}
+
+.vc-bookmark-author:hover img {
+    border-color: var(--bookmark-pink-primary);
+    box-shadow: 0 0 8px rgba(255, 105, 180, 0.5);
+}
+
+.vc-bookmark-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: all 0.2s ease;
+}
+
+.vc-bookmark-item:hover .vc-bookmark-actions {
+    opacity: 1;
+}
+
+.vc-bookmark-actions button {
+    padding: 4px 6px;
+    border: 1px solid var(--bookmark-bg-tertiary);
+    border-radius: 4px;
+    background: var(--bookmark-bg-secondary);
+    color: var(--bookmark-text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vc-bookmark-actions button:hover {
+    background: var(--bookmark-pink-primary);
+    color: white;
+    border-color: var(--bookmark-pink-primary);
+    transform: scale(1.05);
+}
+
+.vc-bookmark-actions button[color*="RED"]:hover {
+    background: var(--bookmark-danger);
+    border-color: var(--bookmark-danger);
+}
+
+.vc-bookmark-content {
+    margin-bottom: 10px;
+    word-wrap: break-word;
+    color: var(--bookmark-text-secondary);
+    line-height: 1.4;
+    background: var(--bookmark-bg-secondary);
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 3px solid var(--bookmark-pink-primary);
+}
+
+.vc-bookmark-attachments,
+.vc-bookmark-embeds {
+    margin-bottom: 8px;
+    color: var(--bookmark-text-muted);
+    font-size: 12px;
+}
+
+.vc-bookmark-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.vc-bookmark-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.vc-bookmark-tag {
+    background: var(--bookmark-pink-primary);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.vc-bookmark-tag:hover {
+    background: var(--bookmark-pink-secondary);
+}
+
+.vc-bookmark-note {
+    margin-bottom: 8px;
+    font-style: italic;
+    color: var(--bookmark-text-muted);
+    background: var(--bookmark-bg-secondary);
+    padding: 6px;
+    border-radius: 4px;
+    border-left: 2px solid var(--bookmark-pink-primary);
+}
+
+.vc-bookmark-timestamp {
+    text-align: right;
+    color: var(--bookmark-text-muted);
+    font-size: 11px;
+}
+
+.vc-bookmark-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    text-align: center;
+    color: var(--bookmark-text-muted);
+    font-size: 14px;
+    background: var(--bookmark-bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--bookmark-bg-tertiary);
+}
+
+/* Bookmark Editor */
+.vc-bookmark-editor {
+    background: linear-gradient(135deg, var(--bookmark-bg-secondary) 0%, var(--bookmark-bg-tertiary) 100%);
+    border-radius: 12px;
+    padding: 20px;
+    height: 100%;
+    overflow-y: auto;
+    border: 1px solid var(--bookmark-pink-light);
+    box-shadow: 0 4px 16px rgba(255, 105, 180, 0.2);
+}
+
+.vc-bookmark-editor::-webkit-scrollbar {
+    width: 8px;
+}
+
+.vc-bookmark-editor::-webkit-scrollbar-track {
+    background: var(--bookmark-bg-primary);
+    border-radius: 4px;
+}
+
+.vc-bookmark-editor::-webkit-scrollbar-thumb {
+    background: var(--bookmark-pink-primary);
+    border-radius: 4px;
+}
+
+.vc-bookmark-editor::-webkit-scrollbar-thumb:hover {
+    background: var(--bookmark-pink-secondary);
+}
+
+.vc-bookmark-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--bookmark-pink-primary);
+    color: var(--bookmark-text-primary);
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.vc-bookmark-preview {
+    background: linear-gradient(135deg, var(--bookmark-bg-primary) 0%, var(--bookmark-bg-secondary) 100%);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--bookmark-pink-light);
+    box-shadow: 0 2px 8px rgba(255, 105, 180, 0.1);
+}
+
+.vc-bookmark-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    color: var(--bookmark-text-primary);
+    font-weight: 600;
+}
+
+.vc-bookmark-preview-content {
+    margin-bottom: 12px;
+    word-wrap: break-word;
+    color: var(--bookmark-text-secondary);
+    line-height: 1.5;
+    background: rgba(255, 105, 180, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+    border-left: 4px solid var(--bookmark-pink-primary);
+}
+
+.vc-form-section {
+    margin-bottom: 20px;
+}
+
+.vc-form-section label {
+    color: var(--bookmark-text-primary);
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.vc-form-section input,
+.vc-form-section select,
+.vc-form-section textarea {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bookmark-bg-primary);
+    border: 2px solid var(--bookmark-pink-light);
+    border-radius: 8px;
+    color: var(--bookmark-text-primary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.vc-form-section input:focus,
+.vc-form-section select:focus,
+.vc-form-section textarea:focus {
+    outline: none;
+    border-color: var(--bookmark-pink-primary);
+    box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.3);
+}
+
+.vc-form-section textarea {
+    min-height: 100px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.vc-folder-input,
+.vc-tags-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.vc-new-folder,
+.vc-add-tag {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.vc-new-folder input,
+.vc-add-tag input {
+    flex: 1;
+}
+
+.vc-new-folder button,
+.vc-add-tag button {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, var(--bookmark-pink-primary) 0%, var(--bookmark-pink-secondary) 100%);
+    border: none;
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(255, 105, 180, 0.3);
+}
+
+.vc-new-folder button:hover,
+.vc-add-tag button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 105, 180, 0.5);
+}
+
+.vc-current-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vc-tag {
+    background: linear-gradient(135deg, var(--bookmark-pink-primary) 0%, var(--bookmark-pink-secondary) 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 4px rgba(255, 105, 180, 0.3);
+    transition: all 0.3s ease;
+}
+
+.vc-tag:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(255, 105, 180, 0.5);
+}
+
+.vc-tag-remove {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.vc-tag-remove:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.2);
+}
+
+.vc-suggested-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.vc-suggested-tag {
+    background: var(--bookmark-bg-primary);
+    border: 1px solid var(--bookmark-pink-light);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--bookmark-text-secondary);
+    transition: all 0.3s ease;
+}
+
+.vc-suggested-tag:hover {
+    background: var(--bookmark-pink-light);
+    color: var(--bookmark-bg-primary);
+    transform: scale(1.05);
+}
+
+.vc-form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 2px solid var(--bookmark-pink-primary);
+}
+
+.vc-form-actions button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.vc-form-actions button.primary {
+    background: linear-gradient(135deg, var(--bookmark-pink-primary) 0%, var(--bookmark-pink-secondary) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 105, 180, 0.4);
+}
+
+.vc-form-actions button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 105, 180, 0.6);
+}
+
+.vc-form-actions button.secondary {
+    background: var(--bookmark-bg-primary);
+    color: var(--bookmark-text-secondary);
+    border: 2px solid var(--bookmark-pink-light);
+}
+
+.vc-form-actions button.secondary:hover {
+    background: var(--bookmark-pink-light);
+    color: var(--bookmark-bg-primary);
+    transform: translateY(-2px);
+}
+
+/* Export/Import Panel */
+.vc-export-import-panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    background: linear-gradient(135deg, var(--bookmark-bg-secondary) 0%, var(--bookmark-bg-tertiary) 100%);
+    border-radius: 12px;
+    border: 1px solid var(--bookmark-pink-light);
+}
+
+.vc-export-section,
+.vc-import-section,
+.vc-danger-section {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--bookmark-bg-primary) 0%, var(--bookmark-bg-secondary) 100%);
+    border-radius: 12px;
+    border: 1px solid var(--bookmark-pink-light);
+    box-shadow: 0 2px 8px rgba(255, 105, 180, 0.1);
+}
+
+.vc-danger-section {
+    background: linear-gradient(135deg, var(--bookmark-danger) 0%, #ff3742 100%);
+    border: 2px solid var(--bookmark-danger);
+    color: white;
+}
+
+.vc-export-section h3,
+.vc-import-section h3,
+.vc-danger-section h3 {
+    color: var(--bookmark-text-primary);
+    font-weight: 700;
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+
+.vc-danger-section h3 {
+    color: white;
+}
+
+.vc-export-options,
+.vc-import-form {
+    margin-top: 16px;
+}
+
+.vc-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.vc-radio-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    color: var(--bookmark-text-primary);
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.vc-radio-option:hover {
+    color: var(--bookmark-pink-primary);
+    transform: scale(1.02);
+}
+
+.vc-radio-option input[type="radio"] {
+    accent-color: var(--bookmark-pink-primary);
+}
+
+.vc-export-actions,
+.vc-import-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.vc-export-actions button,
+.vc-import-actions button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.vc-export-actions button.primary,
+.vc-import-actions button.primary {
+    background: linear-gradient(135deg, var(--bookmark-pink-primary) 0%, var(--bookmark-pink-secondary) 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 105, 180, 0.4);
+}
+
+.vc-export-actions button.primary:hover,
+.vc-import-actions button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 105, 180, 0.6);
+}
+
+.vc-export-actions button.secondary,
+.vc-import-actions button.secondary {
+    background: var(--bookmark-bg-primary);
+    color: var(--bookmark-text-secondary);
+    border: 2px solid var(--bookmark-pink-light);
+}
+
+.vc-export-actions button.secondary:hover,
+.vc-import-actions button.secondary:hover {
+    background: var(--bookmark-pink-light);
+    color: var(--bookmark-bg-primary);
+    transform: translateY(-2px);
+}
+
+.vc-export-actions button.danger,
+.vc-import-actions button.danger {
+    background: var(--bookmark-danger);
+    color: white;
+}
+
+.vc-export-actions button.danger:hover,
+.vc-import-actions button.danger:hover {
+    background: #ff3742;
+    transform: translateY(-2px);
+}
+
+.vc-import-form textarea {
+    width: 100%;
+    min-height: 140px;
+    margin-bottom: 16px;
+    resize: vertical;
+    padding: 16px;
+    background: var(--bookmark-bg-primary);
+    border: 2px solid var(--bookmark-pink-light);
+    border-radius: 8px;
+    color: var(--bookmark-text-primary);
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.vc-import-form textarea:focus {
+    outline: none;
+    border-color: var(--bookmark-pink-primary);
+    box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.3);
+}
+
+/* Statistics */
+.vc-bookmark-stats {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--bookmark-bg-secondary) 0%, var(--bookmark-bg-tertiary) 100%);
+    border-radius: 12px;
+    border: 1px solid var(--bookmark-pink-light);
+}
+
+.vc-bookmark-stats h2 {
+    color: var(--bookmark-text-primary);
+    font-weight: 700;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.vc-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.vc-stats-card {
+    background: linear-gradient(135deg, var(--bookmark-bg-primary) 0%, var(--bookmark-bg-secondary) 100%);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--bookmark-pink-light);
+    box-shadow: 0 4px 16px rgba(255, 105, 180, 0.2);
+    transition: all 0.3s ease;
+}
+
+.vc-stats-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(255, 105, 180, 0.3);
+}
+
+.vc-stats-card h3 {
+    color: var(--bookmark-text-secondary);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.vc-stats-number {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--bookmark-pink-primary);
+    margin-top: 8px;
+    text-shadow: 0 2px 4px rgba(255, 105, 180, 0.3);
+}
+
+.vc-stats-list {
+    margin-top: 16px;
+}
+
+.vc-stats-list h4 {
+    color: var(--bookmark-text-primary);
+    font-weight: 700;
+    margin-bottom: 12px;
+    font-size: 16px;
+}
+
+.vc-stats-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, var(--bookmark-bg-secondary) 0%, var(--bookmark-bg-tertiary) 100%);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    border: 1px solid var(--bookmark-pink-light);
+    transition: all 0.3s ease;
+}
+
+.vc-stats-item:hover {
+    background: linear-gradient(135deg, var(--bookmark-pink-primary) 0%, var(--bookmark-pink-secondary) 100%);
+    color: white;
+    transform: scale(1.02);
+}
+
+.vc-stats-item:last-child {
+    margin-bottom: 0;
+}
+
+.vc-stats-item-name {
+    color: var(--bookmark-text-primary);
+    font-weight: 600;
+}
+
+.vc-stats-item-count {
+    color: var(--bookmark-pink-primary);
+    font-weight: 700;
+    background: rgba(255, 105, 180, 0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.vc-stats-item:hover .vc-stats-item-name,
+.vc-stats-item:hover .vc-stats-item-count {
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 800px) {
+    .vc-bookmark-main {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .vc-bookmark-editor-container,
+    .vc-bookmark-list-container {
+        min-width: unset;
+    }
+
+    .vc-bookmark-filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .vc-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vc-export-actions,
+    .vc-import-actions {
+        flex-direction: column;
+    }
+
+    .vc-bookmark-manager {
+        padding: 16px;
+        max-height: 90vh;
+    }
+
+    .vc-bookmark-tabs {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .vc-bookmark-tab {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
