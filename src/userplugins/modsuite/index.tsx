@@ -641,8 +641,69 @@ const AnalyticsTab = () => {
     );
 };
 
+// Global React component instance
+let modSuiteReactRoot: any = null;
+
+// Function to render React component
+function renderModSuiteComponent() {
+    if (modSuiteReactRoot) return;
+
+    // Create container
+    const container = document.createElement('div');
+    container.id = 'modsuite-react-root';
+    document.body.appendChild(container);
+
+    // Render React component
+    try {
+        // Use React 18 style rendering if available
+        const ReactDOM = (window as any).ReactDOM;
+        if (ReactDOM && ReactDOM.createRoot) {
+            modSuiteReactRoot = ReactDOM.createRoot(container);
+            modSuiteReactRoot.render(React.createElement(ModSuitePanel));
+        } else if (ReactDOM && ReactDOM.render) {
+            // Fallback to legacy rendering
+            ReactDOM.render(React.createElement(ModSuitePanel), container);
+            modSuiteReactRoot = { container, unmount: () => ReactDOM.unmountComponentAtNode(container) };
+        } else {
+            // Manual rendering fallback
+            container.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000;background:white;padding:20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);">ModSuite React component could not render</div>';
+            modSuiteReactRoot = { container, unmount: () => container.remove() };
+        }
+    } catch (error) {
+        console.error('ModSuite: Failed to render React component:', error);
+        // Fallback to simple DOM
+        container.innerHTML = '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000;background:white;padding:20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);">ModSuite (DOM fallback)</div>';
+        modSuiteReactRoot = { container, unmount: () => container.remove() };
+    }
+}
+
+// Function to cleanup React component
+function cleanupModSuiteComponent() {
+    if (modSuiteReactRoot) {
+        try {
+            if (modSuiteReactRoot.unmount) {
+                modSuiteReactRoot.unmount();
+            } else if (modSuiteReactRoot.render) {
+                modSuiteReactRoot.unmount();
+            }
+        } catch (error) {
+            console.error('ModSuite: Error during cleanup:', error);
+        }
+
+        const container = document.getElementById('modsuite-react-root');
+        if (container) container.remove();
+
+        modSuiteReactRoot = null;
+    }
+}
+
 // Simple DOM-based modal functions (keeping for compatibility)
 function createModSuiteModal(user?: any) {
+    // Ensure React component is rendered
+    if (!modSuiteReactRoot) {
+        renderModSuiteComponent();
+    }
+
     // Trigger React component
     const event = new CustomEvent('modsuite:open-panel', { detail: { user } });
     document.dispatchEvent(event);
@@ -744,6 +805,9 @@ export default definePlugin({
         // Create floating button
         createFloatingButton();
 
+        // Render React component
+        renderModSuiteComponent();
+
         // Listen for channel changes to update floating button
         this.channelChangeListener = () => updateFloatingButton();
         SelectedChannelStore.addChangeListener(this.channelChangeListener);
@@ -762,26 +826,16 @@ export default definePlugin({
         const button = document.getElementById('modsuite-floating-btn');
         if (button) button.remove();
 
+        // Cleanup React component
+        cleanupModSuiteComponent();
+
         // Remove channel change listener
         if (this.channelChangeListener) {
             SelectedChannelStore.removeChangeListener(this.channelChangeListener);
         }
     },
 
-    // Patch to inject ModSuite React component
-    patches: [
-        {
-            find: "Messages.ACTIVITY_PANEL",
-            replacement: {
-                match: /(?<=\i\.createElement\(\i\.Fragment,null,)/,
-                replace: "$self.renderModSuite(),"
-            }
-        }
-    ],
-
-    renderModSuite() {
-        return React.createElement(ModSuitePanel);
-    },
+    // No patches needed - using direct React rendering
 
 
 
