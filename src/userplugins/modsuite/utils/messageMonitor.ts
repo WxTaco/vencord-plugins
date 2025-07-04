@@ -64,21 +64,20 @@ export class MessageMonitor {
         if (!message || !message.author) return;
 
         // Skip bot messages unless specifically enabled
-        if (message.author.bot && !settings.store.trackBotMessages) return;
+        if (message.author.bot && !settings.store.enableUserTracking) return;
 
-        // Track user message
-        if (settings.store.enableUserTracking) {
-            this.userTracker.trackMessage(
-                message.author.id,
-                message.author.username,
-                {
-                    id: message.id,
-                    channelId: message.channel_id,
-                    content: message.content || '',
-                    edited: false,
-                    deleted: false
-                }
-            );
+        // Only track messages for explicitly tracked users
+        if (settings.store.enableUserTracking &&
+            (window as any).ModSuiteMessageTracker?.isTracking(message.author.id)) {
+            (window as any).ModSuiteMessageTracker.addMessage(message.author.id, {
+                id: message.id,
+                channelId: message.channel_id,
+                content: message.content || '',
+                timestamp: message.timestamp,
+                author: message.author,
+                attachments: message.attachments || [],
+                embeds: message.embeds || []
+            });
         }
 
         // Track pings

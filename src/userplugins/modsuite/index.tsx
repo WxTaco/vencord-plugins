@@ -221,71 +221,76 @@ const DiscordAPI = {
 // Import the advanced message monitoring system
 import { messageMonitor, getUserAnalytics, getServerAnalytics } from "./utils/messageMonitor";
 
-// Compatibility wrapper for the advanced MessageTracker
+// Simple tracking system that only tracks explicitly selected users
 const MessageTracker = {
+    // Store only explicitly tracked users
+    explicitlyTrackedUsers: new Set<string>(),
+    userMessages: new Map<string, any[]>(),
+
     get trackedUsers() {
         // Return a Map-like interface for compatibility
-        const allUsers = messageMonitor.getAllTrackedUsers();
         const map = new Map();
-        allUsers.forEach(user => {
-            map.set(user.userId, user.messages);
+        this.explicitlyTrackedUsers.forEach(userId => {
+            map.set(userId, this.userMessages.get(userId) || []);
         });
         return map;
     },
 
     addMessage(userId: string, message: any) {
-        // Use the advanced tracker
-        const user = UserStore.getUser(userId);
-        messageMonitor.trackUserMessage(userId, user?.username || 'Unknown', {
-            id: message.id,
-            channelId: message.channelId,
-            content: message.content,
-            edited: false,
-            deleted: false
-        });
+        // Only add messages for explicitly tracked users
+        if (this.explicitlyTrackedUsers.has(userId)) {
+            if (!this.userMessages.has(userId)) {
+                this.userMessages.set(userId, []);
+            }
+            const messages = this.userMessages.get(userId)!;
+            messages.unshift(message);
+            // Keep only last 100 messages per user
+            if (messages.length > 100) {
+                messages.splice(100);
+            }
+        }
     },
 
     getMessages(userId: string) {
-        return messageMonitor.getUserMessages(userId);
+        return this.userMessages.get(userId) || [];
     },
 
     getTrackedUsers() {
-        const allUsers = messageMonitor.getAllTrackedUsers();
-        // Filter out system/init messages and only return users with real messages
-        return allUsers
-            .filter(userData => userData.messageCount > 0 && userData.userId !== 'system')
-            .map(userData => ({
-                id: userData.userId,
-                username: userData.username,
-                messageCount: userData.messageCount,
-                lastMessage: userData.lastSeen
-            }));
+        return Array.from(this.explicitlyTrackedUsers).map(userId => {
+            const messages = this.userMessages.get(userId) || [];
+            const user = UserStore.getUser(userId);
+            return {
+                id: userId,
+                username: user?.username || 'Unknown User',
+                messageCount: messages.length,
+                lastMessage: messages[0]?.timestamp || null
+            };
+        });
     },
 
     startTracking(userId: string) {
-        // Check if already tracking to avoid duplicates
-        const existingUsers = messageMonitor.getAllTrackedUsers();
-        const isAlreadyTracked = existingUsers.some(userData => userData.userId === userId);
-
-        if (!isAlreadyTracked) {
-            const user = UserStore.getUser(userId);
-            if (user) {
-                messageMonitor.trackUserMessage(userId, user.username, {
-                    id: 'init-' + Date.now(),
-                    channelId: 'system',
-                    content: '[Tracking started]',
-                    edited: false,
-                    deleted: false
-                });
-                console.log(`ModSuite: Started tracking user ${user.username} (${userId})`);
+        if (!this.explicitlyTrackedUsers.has(userId)) {
+            this.explicitlyTrackedUsers.add(userId);
+            if (!this.userMessages.has(userId)) {
+                this.userMessages.set(userId, []);
             }
+            const user = UserStore.getUser(userId);
+            console.log(`ModSuite: Started tracking user ${user?.username || 'Unknown'} (${userId})`);
         } else {
             console.log(`ModSuite: User ${userId} is already being tracked`);
         }
     },
 
     stopTracking(userId: string) {
-        messageMonitor.clearUserData(userId);
+        this.explicitlyTrackedUsers.delete(userId);
+        this.userMessages.delete(userId);
+        const user = UserStore.getUser(userId);
+        console.log(`ModSuite: Stopped tracking user ${user?.username || 'Unknown'} (${userId})`);
+    },
+
+    // Check if a user is being explicitly tracked
+    isTracking(userId: string) {
+        return this.explicitlyTrackedUsers.has(userId);
     }
 };
 
@@ -1312,7 +1317,37 @@ const ModLogTab = ({ guild }: any) => {
                 // Process audit log entries
                 const processedLogs = auditLogEntries.map((entry: any) => {
                     const user = userMap.get(entry.user_id);
-                    const target = userMap.get(entry.target_id) || { username: 'Unknown', id: entry.target_id };
+                    let target = userMap.get(entry.target_id);
+
+                    // Try to get target from UserStore if not in audit log users
+                    if (!target && entry.target_id) {
+                        const storeUser = UserStore.getUser(entry.target_id);
+                        if (storeUser) {
+                            target = storeUser;
+                        }
+                    }
+
+                    // Handle different target types
+                    if (!target) {
+                        if (entry.target_id) {
+                            // Try to determine target type from action
+                            if ([10, 11, 12].includes(entry.action_type)) {
+                                // Channel actions
+                                const channel = ChannelStore.getChannel(entry.target_id);
+                                target = { name: channel?.name || `Channel ${entry.target_id}`, id: entry.target_id };
+                            } else if ([30, 31, 32].includes(entry.action_type)) {
+                                // Role actions
+                                const guild = GuildStore.getGuild(entry.guild_id);
+                                const role = guild?.roles?.[entry.target_id];
+                                target = { name: role?.name || `Role ${entry.target_id}`, id: entry.target_id };
+                            } else {
+                                // Unknown user
+                                target = { username: `User ${entry.target_id}`, id: entry.target_id };
+                            }
+                        } else {
+                            target = { username: 'Unknown Target', id: 'unknown' };
+                        }
+                    }
 
                     // Map action types to readable names
                     const actionNames: { [key: number]: string; } = {
@@ -1365,10 +1400,19 @@ const ModLogTab = ({ guild }: any) => {
                         126: 'Auto Moderation Timeout User'
                     };
 
+                    // Try to get user from UserStore if not in audit log
+                    let resolvedUser = user;
+                    if (!resolvedUser && entry.user_id) {
+                        const storeUser = UserStore.getUser(entry.user_id);
+                        if (storeUser) {
+                            resolvedUser = storeUser;
+                        }
+                    }
+
                     return {
                         id: entry.id,
                         action: actionNames[entry.action_type] || `Unknown Action (${entry.action_type})`,
-                        user: user?.username || 'Unknown User',
+                        user: resolvedUser?.username || `User ${entry.user_id || 'Unknown'}`,
                         userId: entry.user_id,
                         target: target.username || target.name || 'Unknown Target',
                         targetId: entry.target_id,
