@@ -13,34 +13,9 @@ import { TimestampTool } from "./TimestampTool";
 import { TemplateManagerComponent } from "./TemplateManager";
 import { defaultEmbed, validateEmbed, EmbedData } from "../utils/embedUtils";
 import { generateEmbedImage, downloadEmbedImage, copyEmbedImageToClipboard } from "../utils/imageGenerator";
-
-interface SavedEmbed {
-    title?: string;
-    description?: string;
-    color?: number;
-    author?: {
-        name?: string;
-        icon_url?: string;
-        url?: string;
-    };
-    footer?: {
-        text?: string;
-        icon_url?: string;
-    };
-    thumbnail?: {
-        url?: string;
-    };
-    image?: {
-        url?: string;
-    };
-    fields?: Array<{
-        name: string;
-        value: string;
-        inline?: boolean;
-    }>;
-    timestamp?: string;
-    url?: string;
-}
+import { SavedEmbed, VencordStorage } from "../utils/VencordStorage";
+import { ApiIntegration } from "../utils/apiIntegration";
+import { TemplateManager } from "../utils/templateManager";
 
 interface SavedEmbeds {
     [embedName: string]: SavedEmbed;
@@ -125,6 +100,10 @@ export function EmbedTesterModal(props: EnhancedModalProps) {
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<string | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<string | null>(null);
+    const [localTemplates, setLocalTemplates] = useState<any[]>([]);
+    const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
     const handleEmbedChange = (newEmbed: any) => {
         const validation = validateEmbed(newEmbed);
@@ -135,6 +114,23 @@ export function EmbedTesterModal(props: EnhancedModalProps) {
             setJsonError(validation.error || "Invalid embed data");
         }
     };
+
+    // Load local templates on component mount
+    React.useEffect(() => {
+        const loadLocalTemplates = async () => {
+            setIsLoadingTemplates(true);
+            try {
+                const templates = await TemplateManager.getAllTemplates();
+                setLocalTemplates(templates);
+            } catch (error) {
+                console.error("Failed to load local templates:", error);
+            } finally {
+                setIsLoadingTemplates(false);
+            }
+        };
+
+        loadLocalTemplates();
+    }, []);
 
     const handleSaveTemplate = async (templateName: string) => {
         if (!onSave || !guildId) {
@@ -165,10 +161,109 @@ export function EmbedTesterModal(props: EnhancedModalProps) {
         }
     };
 
-    const handleLoadTemplate = (template: SavedEmbed) => {
+    const handleSaveLocalTemplate = async (templateName: string, category: string = "Custom Templates") => {
+        setIsSaving(true);
+        setSaveStatus("💾 Saving local template...");
+
+        try {
+            const template = await TemplateManager.saveCustomTemplate({
+                name: templateName,
+                description: `Custom template created on ${new Date().toLocaleDateString()}`,
+                category,
+                embedData
+            });
+
+            if (template) {
+                setSaveStatus(`✅ Local template "${templateName}" saved successfully!`);
+                // Reload templates
+                const updatedTemplates = await TemplateManager.getAllTemplates();
+                setLocalTemplates(updatedTemplates);
+                // Mark as recently used
+                await TemplateManager.markAsRecentlyUsed(template.id);
+                setTimeout(() => setSaveStatus(null), 3000);
+            } else {
+                setSaveStatus("❌ Failed to save local template");
+                setTimeout(() => setSaveStatus(null), 3000);
+            }
+        } catch (error) {
+            console.error("Save local template error:", error);
+            setSaveStatus("❌ Error saving local template");
+            setTimeout(() => setSaveStatus(null), 3000);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSyncTemplates = async () => {
+        if (!guildId) {
+            setSyncStatus("❌ Guild ID not available");
+            return;
+        }
+
+        setIsSyncing(true);
+        setSyncStatus("🔄 Syncing templates with API...");
+
+        try {
+            const result = await ApiIntegration.syncTemplates(guildId);
+
+            if (result.success) {
+                setSyncStatus(`✅ Synced ${result.synced} templates successfully!`);
+                setTimeout(() => setSyncStatus(null), 3000);
+            } else {
+                setSyncStatus(`❌ Sync failed: ${result.errors.join(', ')}`);
+                setTimeout(() => setSyncStatus(null), 5000);
+            }
+        } catch (error) {
+            console.error("Sync error:", error);
+            setSyncStatus("❌ Error during sync");
+            setTimeout(() => setSyncStatus(null), 3000);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleAddToFavorites = async (templateId: string) => {
+        try {
+            const success = await TemplateManager.addToFavorites(templateId);
+            if (success) {
+                setSaveStatus("⭐ Added to favorites!");
+                setTimeout(() => setSaveStatus(null), 2000);
+            }
+        } catch (error) {
+            console.error("Failed to add to favorites:", error);
+        }
+    };
+
+    const handleLoadTemplate = async (template: SavedEmbed, templateId?: string) => {
         const convertedEmbed = convertSavedEmbedToEmbedData(template);
         setEmbedData(convertedEmbed);
         setActiveTab("gui");
+
+        // Mark as recently used if we have a template ID
+        if (templateId) {
+            try {
+                await TemplateManager.markAsRecentlyUsed(templateId);
+            } catch (error) {
+                console.error("Failed to mark template as recently used:", error);
+            }
+        }
+    };
+
+    const handleLoadLocalTemplate = async (templateId: string) => {
+        try {
+            const template = await TemplateManager.getTemplateById(templateId);
+            if (template) {
+                setEmbedData(template.embedData);
+                setActiveTab("gui");
+                await TemplateManager.markAsRecentlyUsed(templateId);
+                setSaveStatus(`📖 Loaded template: ${template.name}`);
+                setTimeout(() => setSaveStatus(null), 2000);
+            }
+        } catch (error) {
+            console.error("Failed to load local template:", error);
+            setSaveStatus("❌ Failed to load template");
+            setTimeout(() => setSaveStatus(null), 3000);
+        }
     };
 
     const handleGenerateImage = async () => {
