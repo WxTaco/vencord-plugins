@@ -120,22 +120,96 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             currentY += 12;
         }
 
-        // Draw fields
+        // Draw fields with inline support
         if (embedData.fields && embedData.fields.length > 0) {
-            for (const field of embedData.fields) {
-                // Field name
-                currentY = drawText(field.name, embedX + 20, currentY, {
-                    fontSize: 14,
-                    fontWeight: 'bold',
-                    color: theme.text
-                });
+            let inlineFields: any[] = [];
+            let currentRowY = currentY;
 
-                // Field value
-                currentY = drawText(field.value, embedX + 20, currentY, {
-                    fontSize: 14,
-                    color: theme.text
-                });
-                currentY += 8;
+            for (let i = 0; i < embedData.fields.length; i++) {
+                const field = embedData.fields[i];
+
+                if (field.inline && inlineFields.length < 3) {
+                    // Collect inline fields (max 3 per row)
+                    inlineFields.push(field);
+
+                    // If we have 3 inline fields or this is the last field, render the row
+                    if (inlineFields.length === 3 || i === embedData.fields.length - 1) {
+                        const fieldWidth = (embedWidth - 40) / inlineFields.length;
+                        let fieldX = embedX + 20;
+                        let maxRowHeight = currentRowY;
+
+                        // Draw each inline field in the row
+                        for (const inlineField of inlineFields) {
+                            let fieldY = currentRowY;
+
+                            // Field name
+                            fieldY = drawText(inlineField.name, fieldX, fieldY, {
+                                fontSize: 14,
+                                fontWeight: 'bold',
+                                color: theme.text,
+                                maxWidth: fieldWidth - 10
+                            });
+
+                            // Field value
+                            fieldY = drawText(inlineField.value, fieldX, fieldY, {
+                                fontSize: 14,
+                                color: theme.text,
+                                maxWidth: fieldWidth - 10
+                            });
+
+                            maxRowHeight = Math.max(maxRowHeight, fieldY);
+                            fieldX += fieldWidth;
+                        }
+
+                        currentY = maxRowHeight + 12;
+                        inlineFields = [];
+                        currentRowY = currentY;
+                    }
+                } else {
+                    // Render any pending inline fields first
+                    if (inlineFields.length > 0) {
+                        const fieldWidth = (embedWidth - 40) / inlineFields.length;
+                        let fieldX = embedX + 20;
+                        let maxRowHeight = currentRowY;
+
+                        for (const inlineField of inlineFields) {
+                            let fieldY = currentRowY;
+
+                            fieldY = drawText(inlineField.name, fieldX, fieldY, {
+                                fontSize: 14,
+                                fontWeight: 'bold',
+                                color: theme.text,
+                                maxWidth: fieldWidth - 10
+                            });
+
+                            fieldY = drawText(inlineField.value, fieldX, fieldY, {
+                                fontSize: 14,
+                                color: theme.text,
+                                maxWidth: fieldWidth - 10
+                            });
+
+                            maxRowHeight = Math.max(maxRowHeight, fieldY);
+                            fieldX += fieldWidth;
+                        }
+
+                        currentY = maxRowHeight + 12;
+                        inlineFields = [];
+                    }
+
+                    // Draw non-inline field
+                    currentY = drawText(field.name, embedX + 20, currentY, {
+                        fontSize: 14,
+                        fontWeight: 'bold',
+                        color: theme.text
+                    });
+
+                    currentY = drawText(field.value, embedX + 20, currentY, {
+                        fontSize: 14,
+                        color: theme.text
+                    });
+                    currentY += 12;
+                    currentRowY = currentY;
+                }
             }
         }
 
@@ -175,12 +249,24 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             finalCanvas.width = finalWidth;
             finalCanvas.height = finalHeight;
 
-            // Create background with subtle gradient that covers the full canvas
-            const gradient = finalCtx.createLinearGradient(0, 0, finalWidth, finalHeight);
-            gradient.addColorStop(0, theme.background);
-            gradient.addColorStop(0.5, theme.backgroundSecondary || theme.background);
-            gradient.addColorStop(1, theme.background);
+            // Create beautiful gradient background
+            const gradient = finalCtx.createRadialGradient(
+                finalWidth / 2, finalHeight / 3, 0,
+                finalWidth / 2, finalHeight / 3, Math.max(finalWidth, finalHeight) * 0.8
+            );
+            gradient.addColorStop(0, '#fdf2f8'); // Light pink center
+            gradient.addColorStop(0.3, '#fce7f3'); // Soft pink
+            gradient.addColorStop(0.6, '#f3e8ff'); // Light purple
+            gradient.addColorStop(1, '#e0e7ff'); // Light blue edge
             finalCtx.fillStyle = gradient;
+            finalCtx.fillRect(0, 0, finalWidth, finalHeight);
+
+            // Add subtle overlay gradient for depth
+            const overlayGradient = finalCtx.createLinearGradient(0, 0, 0, finalHeight);
+            overlayGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+            overlayGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
+            overlayGradient.addColorStop(1, 'rgba(0, 0, 0, 0.05)');
+            finalCtx.fillStyle = overlayGradient;
             finalCtx.fillRect(0, 0, finalWidth, finalHeight);
 
             // Add subtle texture across the full canvas
