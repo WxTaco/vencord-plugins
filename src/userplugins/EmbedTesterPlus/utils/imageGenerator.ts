@@ -60,16 +60,9 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             ctx.closePath();
         };
 
-        // Embed background (sharp corners for the embed itself)
-        const embedHeight = canvas.height - 100;
-
-        ctx.fillStyle = theme.embedBg;
-        ctx.fillRect(embedX, embedY, embedWidth, embedHeight);
-
-        // Left border (color) - sharp corners
+        // We'll draw the embed background after we know the content height
+        // For now, just set up the border color
         const borderColor = embedData.color ? decimalToHex(embedData.color) : '#5865f2';
-        ctx.fillStyle = borderColor;
-        ctx.fillRect(embedX, embedY, 4, embedHeight);
 
         // Helper function to draw text
         const drawText = (text: string, x: number, y: number, options: {
@@ -251,6 +244,16 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
                 });
             }
         }
+
+        // Now draw the embed background with the correct height
+        const embedHeight = currentY - embedY + 20; // Height based on actual content
+
+        ctx.fillStyle = theme.embedBg;
+        ctx.fillRect(embedX, embedY, embedWidth, embedHeight);
+
+        // Left border (color) - sharp corners
+        ctx.fillStyle = borderColor;
+        ctx.fillRect(embedX, embedY, 4, embedHeight);
 
         // Calculate actual content height from the canvas
         const actualContentHeight = currentY + 20; // Actual content height
