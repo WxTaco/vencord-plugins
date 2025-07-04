@@ -61,8 +61,6 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
         showToast("Markdown copied to clipboard!", Toasts.Type.SUCCESS);
     };
 
-    const inputStyle: React.CSSProperties = {}; // Will use CSS class instead
-
     const labelStyle: React.CSSProperties = {
         display: "block",
         marginBottom: "6px",
@@ -208,7 +206,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             author: { ...embedData.author, name: e.target.value }
                         })}
                         placeholder="Author name"
-                        style={inputStyle}
+                        className="embed-text-input"
                         maxLength={256}
                     />
                 </div>
@@ -223,7 +221,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                                 author: { ...embedData.author, url: e.target.value }
                             })}
                             placeholder="https://example.com"
-                            style={inputStyle}
+                            className="embed-text-input"
                         />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -235,7 +233,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                                 author: { ...embedData.author, icon_url: e.target.value }
                             })}
                             placeholder="https://example.com/icon.png"
-                            style={inputStyle}
+                            className="embed-text-input"
                         />
                     </div>
                 </div>
@@ -254,7 +252,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             footer: { ...embedData.footer, text: e.target.value }
                         })}
                         placeholder="Footer text"
-                        style={inputStyle}
+                        className="embed-text-input"
                         maxLength={2048}
                     />
                 </div>
@@ -268,7 +266,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             footer: { ...embedData.footer, icon_url: e.target.value }
                         })}
                         placeholder="https://example.com/icon.png"
-                        style={inputStyle}
+                        className="embed-text-input"
                     />
                 </div>
             </div>
@@ -286,7 +284,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             image: e.target.value ? { url: e.target.value } : undefined
                         })}
                         placeholder="https://example.com/image.png"
-                        style={inputStyle}
+                        className="embed-text-input"
                     />
                 </div>
 
@@ -299,7 +297,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             thumbnail: e.target.value ? { url: e.target.value } : undefined
                         })}
                         placeholder="https://example.com/thumbnail.png"
-                        style={inputStyle}
+                        className="embed-text-input"
                     />
                 </div>
             </div>
@@ -360,7 +358,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                                 value={field.name}
                                 onChange={(e) => updateField(index, { name: e.target.value })}
                                 placeholder="Field name"
-                                style={inputStyle}
+                                className="embed-text-input"
                                 maxLength={256}
                             />
                         </div>
@@ -371,7 +369,8 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                                 value={field.value}
                                 onChange={(e) => updateField(index, { value: e.target.value })}
                                 placeholder="Field value"
-                                style={{ ...inputStyle, height: "60px", resize: "vertical" }}
+                                className="embed-textarea"
+                                style={{ height: "60px" }}
                                 maxLength={1024}
                             />
                         </div>

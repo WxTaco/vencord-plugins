@@ -117,14 +117,16 @@ export function EmbedTesterModal(props: ModalProps) {
                 </div>
             </ModalHeader>
 
-            <ModalContent style={{
-                padding: "24px",
-                maxHeight: "85vh",
-                overflow: "hidden",
-                background: "linear-gradient(135deg, #fefcff, #fdf2f8)",
-                minWidth: "1200px",
-                minHeight: "700px"
-            }}>
+            <ModalContent
+                className="embed-panel-scrollbar"
+                style={{
+                    padding: "24px",
+                    maxHeight: "85vh",
+                    overflow: "hidden",
+                    background: "linear-gradient(135deg, #fefcff, #fdf2f8)",
+                    minWidth: "1200px",
+                    minHeight: "700px"
+                }}>
                 <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                     {/* Tab Navigation */}
                     <div style={{
@@ -285,109 +287,129 @@ export function EmbedTesterModal(props: ModalProps) {
 
             {/* Custom Scrollbar and Enhanced Styling */}
             <style>{`
-                .embed-panel-scrollbar::-webkit-scrollbar {
-                    width: 12px;
+                /* Apply scrollbar styling to all scrollable areas */
+                .embed-panel-scrollbar::-webkit-scrollbar,
+                .embed-panel-scrollbar *::-webkit-scrollbar {
+                    width: 14px;
+                    height: 14px;
                 }
 
-                .embed-panel-scrollbar::-webkit-scrollbar-track {
+                .embed-panel-scrollbar::-webkit-scrollbar-track,
+                .embed-panel-scrollbar *::-webkit-scrollbar-track {
                     background: linear-gradient(135deg, #fdf2f8, #fce7f3);
-                    border-radius: 6px;
-                    border: 1px solid #f9a8d4;
-                }
-
-                .embed-panel-scrollbar::-webkit-scrollbar-thumb {
-                    background: linear-gradient(135deg, #ec4899, #be185d);
-                    border-radius: 6px;
-                    border: 2px solid #fdf2f8;
-                }
-
-                .embed-panel-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: linear-gradient(135deg, #be185d, #9d174d);
-                }
-
-                .embed-panel-scrollbar::-webkit-scrollbar-corner {
-                    background: #fdf2f8;
-                }
-
-                /* Enhanced input styling */
-                .embed-text-input {
-                    width: 100%;
-                    padding: 12px 16px;
-                    border: 2px solid #f9a8d4;
                     border-radius: 8px;
-                    fontSize: 14px;
-                    fontFamily: inherit;
-                    background: rgba(255, 255, 255, 0.95);
-                    color: #831843;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1);
+                    border: 1px solid #f9a8d4;
+                    margin: 2px;
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-thumb,
+                .embed-panel-scrollbar *::-webkit-scrollbar-thumb {
+                    background: linear-gradient(135deg, #ec4899, #be185d);
+                    border-radius: 8px;
+                    border: 2px solid #fdf2f8;
+                    box-shadow: 0 2px 4px rgba(190, 24, 93, 0.2);
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-thumb:hover,
+                .embed-panel-scrollbar *::-webkit-scrollbar-thumb:hover {
+                    background: linear-gradient(135deg, #be185d, #9d174d);
+                    box-shadow: 0 4px 8px rgba(190, 24, 93, 0.3);
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-corner,
+                .embed-panel-scrollbar *::-webkit-scrollbar-corner {
+                    background: #fdf2f8;
+                    border-radius: 8px;
+                }
+
+                /* Enhanced input styling with !important to override any conflicts */
+                .embed-text-input {
+                    width: 100% !important;
+                    padding: 12px 16px !important;
+                    border: 2px solid #f9a8d4 !important;
+                    border-radius: 8px !important;
+                    font-size: 14px !important;
+                    font-family: inherit !important;
+                    background: rgba(255, 255, 255, 0.95) !important;
+                    color: #831843 !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1) !important;
+                    box-sizing: border-box !important;
                 }
 
                 .embed-text-input:focus {
-                    outline: none;
-                    border-color: #ec4899;
-                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
-                    background: rgba(255, 255, 255, 1);
+                    outline: none !important;
+                    border-color: #ec4899 !important;
+                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1) !important;
+                    background: rgba(255, 255, 255, 1) !important;
                 }
 
                 .embed-text-input:hover {
-                    border-color: #f472b6;
-                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15);
+                    border-color: #f472b6 !important;
+                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15) !important;
                 }
 
-                /* Enhanced textarea styling */
+                /* Enhanced textarea styling with !important to override any conflicts */
                 .embed-textarea {
-                    width: 100%;
-                    padding: 12px 16px;
-                    border: 2px solid #f9a8d4;
-                    border-radius: 8px;
-                    fontSize: 14px;
-                    fontFamily: inherit;
-                    background: rgba(255, 255, 255, 0.95);
-                    color: #831843;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1);
-                    resize: vertical;
-                    min-height: 80px;
+                    width: 100% !important;
+                    padding: 12px 16px !important;
+                    border: 2px solid #f9a8d4 !important;
+                    border-radius: 8px !important;
+                    font-size: 14px !important;
+                    font-family: inherit !important;
+                    background: rgba(255, 255, 255, 0.95) !important;
+                    color: #831843 !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1) !important;
+                    resize: vertical !important;
+                    min-height: 80px !important;
+                    box-sizing: border-box !important;
                 }
 
                 .embed-textarea:focus {
-                    outline: none;
-                    border-color: #ec4899;
-                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
-                    background: rgba(255, 255, 255, 1);
+                    outline: none !important;
+                    border-color: #ec4899 !important;
+                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1) !important;
+                    background: rgba(255, 255, 255, 1) !important;
                 }
 
                 .embed-textarea:hover {
-                    border-color: #f472b6;
-                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15);
+                    border-color: #f472b6 !important;
+                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15) !important;
                 }
 
-                /* Enhanced select styling */
+                /* Enhanced select styling with !important to override any conflicts */
                 .embed-select {
-                    width: 100%;
-                    padding: 12px 16px;
-                    border: 2px solid #f9a8d4;
-                    border-radius: 8px;
-                    fontSize: 14px;
-                    fontFamily: inherit;
-                    background: rgba(255, 255, 255, 0.95);
-                    color: #831843;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1);
-                    cursor: pointer;
+                    width: 100% !important;
+                    padding: 12px 16px !important;
+                    border: 2px solid #f9a8d4 !important;
+                    border-radius: 8px !important;
+                    font-size: 14px !important;
+                    font-family: inherit !important;
+                    background: rgba(255, 255, 255, 0.95) !important;
+                    color: #831843 !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1) !important;
+                    cursor: pointer !important;
+                    box-sizing: border-box !important;
                 }
 
                 .embed-select:focus {
-                    outline: none;
-                    border-color: #ec4899;
-                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
-                    background: rgba(255, 255, 255, 1);
+                    outline: none !important;
+                    border-color: #ec4899 !important;
+                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1) !important;
+                    background: rgba(255, 255, 255, 1) !important;
                 }
 
                 .embed-select:hover {
-                    border-color: #f472b6;
-                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15);
+                    border-color: #f472b6 !important;
+                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15) !important;
+                }
+
+                /* Force scrollbar styling on the modal content */
+                [class*="embed-panel-scrollbar"] {
+                    scrollbar-width: thin;
+                    scrollbar-color: #ec4899 #fdf2f8;
                 }
             `}</style>
         </ModalRoot>
