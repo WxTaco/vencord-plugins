@@ -10,34 +10,9 @@ import definePlugin, { OptionType } from "@utils/types";
 import { openModal } from "@utils/modal";
 import { React } from "@webpack/common";
 import { EmbedTesterModal } from "./components/EmbedTesterModal";
-
-interface SavedEmbed {
-    title?: string;
-    description?: string;
-    color?: number;
-    author?: {
-        name?: string;
-        icon_url?: string;
-        url?: string;
-    };
-    footer?: {
-        text?: string;
-        icon_url?: string;
-    };
-    thumbnail?: {
-        url?: string;
-    };
-    image?: {
-        url?: string;
-    };
-    fields?: Array<{
-        name: string;
-        value: string;
-        inline?: boolean;
-    }>;
-    timestamp?: string;
-    url?: string;
-}
+import { VencordStorage, SavedEmbed } from "./utils/VencordStorage";
+import { ApiIntegration } from "./utils/apiIntegration";
+import { TemplateManager } from "./utils/templateManager";
 
 interface SavedEmbeds {
     [embedName: string]: SavedEmbed;
@@ -72,38 +47,10 @@ const settings = definePluginSettings({
 });
 
 async function fetchSavedEmbeds(guildId: string): Promise<SavedEmbeds | null> {
-    if (!settings.store.enableBotIntegration || !settings.store.apiUrl || !settings.store.authToken) {
-        console.log("🌸 Bot integration disabled or missing config:", {
-            enabled: settings.store.enableBotIntegration,
-            hasApiUrl: !!settings.store.apiUrl,
-            hasToken: !!settings.store.authToken
-        });
-        return null;
-    }
-
     try {
-        const url = `${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`;
-        console.log("🌸 Fetching embeds from:", url);
-        console.log("🌸 Using token:", settings.store.authToken.substring(0, 10) + "...");
-
-        const response = await fetch(url, {
-            headers: {
-                "Authorization": `Bearer ${settings.store.authToken}`,
-                "Content-Type": "application/json"
-            }
-        });
-
-        console.log("🌸 Fetch response:", response.status, response.statusText);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("🌸 Fetch failed:", response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log("🌸 Fetched embeds data:", data);
-        return data.success ? data.embeds : null;
+        console.log("🌸 Fetching saved embeds for guild:", guildId);
+        const embeds = await ApiIntegration.fetchSavedEmbeds(guildId);
+        return embeds;
     } catch (error) {
         console.error("🌸 Failed to fetch saved embeds:", error);
         return null;
@@ -111,40 +58,9 @@ async function fetchSavedEmbeds(guildId: string): Promise<SavedEmbeds | null> {
 }
 
 async function saveEmbed(guildId: string, name: string, embed: SavedEmbed): Promise<boolean> {
-    if (!settings.store.enableBotIntegration || !settings.store.apiUrl || !settings.store.authToken) {
-        console.log("🌸 Save failed - Bot integration disabled or missing config:", {
-            enabled: settings.store.enableBotIntegration,
-            hasApiUrl: !!settings.store.apiUrl,
-            hasToken: !!settings.store.authToken
-        });
-        return false;
-    }
-
     try {
-        const url = `${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`;
-        console.log("🌸 Saving embed to:", url);
-        console.log("🌸 Saving embed:", name, embed);
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${settings.store.authToken}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ name, embed })
-        });
-
-        console.log("🌸 Save response:", response.status, response.statusText);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("🌸 Save failed:", response.status, errorText);
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log("🌸 Save response data:", data);
-        return data.success;
+        console.log("🌸 Saving embed:", { guildId, name });
+        return await ApiIntegration.saveEmbed(guildId, name, embed);
     } catch (error) {
         console.error("🌸 Failed to save embed:", error);
         return false;
@@ -215,11 +131,123 @@ export default definePlugin({
                     content: `🌸 **Bot Integration Test**\n${status}`
                 });
             }
+        },
+        {
+            name: "embed-test-storage",
+            description: "Test DataStore functionality 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            execute: async (_, ctx) => {
+                try {
+                    const testResult = await VencordStorage.testDataStore();
+                    const templates = await VencordStorage.getCustomTemplates();
+                    const settings = await VencordStorage.getSettings();
+                    const userData = await VencordStorage.getUserData();
+
+                    sendBotMessage(ctx.channel.id, {
+                        content: `🌸 **DataStore Test Results**\n${testResult}\n📁 Templates: ${templates.length}\n⚙️ Settings: ${Object.keys(settings).length} keys\n👤 Favorites: ${userData.favoriteTemplates.length}\n📝 Recent: ${userData.recentTemplates.length}`
+                    });
+                } catch (error) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: `🌸 **Storage Test Failed**\n❌ ${error instanceof Error ? error.message : String(error)}`
+                    });
+                }
+            }
+        },
+        {
+            name: "embed-sync",
+            description: "Sync local templates with bot API 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            execute: async (_, ctx) => {
+                if (!ctx.guild?.id) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: "❌ This command can only be used in servers!"
+                    });
+                    return;
+                }
+
+                try {
+                    const result = await ApiIntegration.syncTemplates(ctx.guild.id);
+
+                    if (result.success) {
+                        sendBotMessage(ctx.channel.id, {
+                            content: `✅ **Sync Complete!**\n🔄 Synced ${result.synced} templates to bot API`
+                        });
+                    } else {
+                        sendBotMessage(ctx.channel.id, {
+                            content: `❌ **Sync Failed**\n${result.errors.join('\n')}`
+                        });
+                    }
+                } catch (error) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: `❌ **Sync Error**\n${error instanceof Error ? error.message : String(error)}`
+                    });
+                }
+            }
+        },
+        {
+            name: "embed-migrate",
+            description: "Migrate data from localStorage to DataStore 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            execute: async (_, ctx) => {
+                try {
+                    const result = await VencordStorage.migrateFromLocalStorage();
+
+                    if (result.success) {
+                        sendBotMessage(ctx.channel.id, {
+                            content: `✅ **Migration Complete!**\n📦 Found and migrated ${result.templatesFound} templates from localStorage`
+                        });
+                    } else {
+                        sendBotMessage(ctx.channel.id, {
+                            content: `❌ **Migration Failed**\nPlease check console for details`
+                        });
+                    }
+                } catch (error) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: `❌ **Migration Error**\n${error instanceof Error ? error.message : String(error)}`
+                    });
+                }
+            }
+        },
+        {
+            name: "embed-stats",
+            description: "Show template and storage statistics 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            execute: async (_, ctx) => {
+                try {
+                    const stats = await TemplateManager.getTemplateStats();
+                    const connectionStatus = await ApiIntegration.testConnection();
+
+                    sendBotMessage(ctx.channel.id, {
+                        content: `📊 **Embed Builder Statistics**\n` +
+                            `📁 Total Templates: ${stats.total}\n` +
+                            `🏗️ Built-in: ${stats.builtin}\n` +
+                            `✨ Custom: ${stats.custom}\n` +
+                            `⭐ Favorites: ${stats.favorites}\n` +
+                            `📂 Categories: ${stats.categories}\n` +
+                            `🔗 API Status: ${connectionStatus.connected ? '✅ Connected' : '❌ Disconnected'}\n` +
+                            `⏱️ Response Time: ${connectionStatus.responseTime || 'N/A'}ms`
+                    });
+                } catch (error) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: `❌ **Stats Error**\n${error instanceof Error ? error.message : String(error)}`
+                    });
+                }
+            }
         }
     ],
 
-    start() {
+    async start() {
         console.log("EmbedBuilder: Enhanced plugin started 🌸");
+
+        // Perform automatic migration on startup
+        try {
+            const migrationResult = await VencordStorage.migrateFromLocalStorage();
+            if (migrationResult.templatesFound > 0) {
+                console.log(`🌸 Migrated ${migrationResult.templatesFound} templates from localStorage to DataStore`);
+            }
+        } catch (error) {
+            console.error("🌸 Migration failed on startup:", error);
+        }
     },
 
     stop() {
@@ -328,51 +356,27 @@ async function openEmbedTester(ctx?: any, action: string = "create", templateNam
 
 // Test bot integration function
 async function testBotIntegration(guildId: string): Promise<string> {
-    console.log("🌸 Testing bot integration...");
-    console.log("🌸 Settings:", {
-        enabled: settings.store.enableBotIntegration,
-        apiUrl: settings.store.apiUrl,
-        hasToken: !!settings.store.authToken,
-        tokenPreview: settings.store.authToken ? settings.store.authToken.substring(0, 10) + "..." : "none"
-    });
-
-    if (!settings.store.enableBotIntegration) {
-        return "❌ Bot integration is disabled in plugin settings";
-    }
-
-    if (!settings.store.apiUrl) {
-        return "❌ API URL not configured in plugin settings";
-    }
-
-    if (!settings.store.authToken) {
-        return "❌ Auth token not configured in plugin settings";
-    }
-
     try {
-        const url = `${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`;
-        console.log("🌸 Testing connection to:", url);
+        console.log("🌸 Testing bot integration for guild:", guildId);
 
-        const response = await fetch(url, {
-            headers: {
-                "Authorization": `Bearer ${settings.store.authToken}`,
-                "Content-Type": "application/json"
-            }
-        });
+        const connectionStatus = await ApiIntegration.testConnection();
 
-        console.log("🌸 Test response:", response.status, response.statusText);
+        if (!connectionStatus.connected) {
+            return `❌ ${connectionStatus.error || 'Connection failed'}`;
+        }
 
-        if (response.ok) {
-            const data = await response.json();
-            console.log("🌸 Test response data:", data);
-            return `✅ Bot integration working! Found ${Object.keys(data.embeds || {}).length} saved templates`;
+        // Test fetching embeds for the specific guild
+        const embeds = await ApiIntegration.fetchSavedEmbeds(guildId, false); // Force fresh fetch
+
+        if (embeds) {
+            const count = Object.keys(embeds).length;
+            return `✅ Bot integration working! Found ${count} saved templates (${connectionStatus.responseTime}ms)`;
         } else {
-            const errorText = await response.text();
-            console.error("🌸 Test failed:", response.status, errorText);
-            return `❌ API Error: ${response.status} ${response.statusText}`;
+            return `⚠️ Connected but no templates found for this server (${connectionStatus.responseTime}ms)`;
         }
     } catch (error) {
-        console.error("🌸 Test connection failed:", error);
-        return `❌ Connection failed: ${error instanceof Error ? error.message : String(error)}`;
+        console.error("🌸 Test integration failed:", error);
+        return `❌ Test failed: ${error instanceof Error ? error.message : String(error)}`;
     }
 }
 

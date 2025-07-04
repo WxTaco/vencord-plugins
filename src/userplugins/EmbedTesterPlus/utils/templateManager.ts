@@ -181,106 +181,148 @@ export const BUILTIN_TEMPLATES: EmbedTemplate[] = [
     }
 ];
 
-// Storage key for custom templates
-const STORAGE_KEY = "embed-builder-templates";
-
-// Template management functions
+// Enhanced template management using DataStore
 export class TemplateManager {
-    static getCustomTemplates(): EmbedTemplate[] {
-        try {
-            // Check if localStorage is available (not available in Vencord context)
-            if (typeof localStorage === 'undefined') {
-                return [];
-            }
-            const stored = localStorage.getItem(STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
-        } catch (error) {
-            console.error("Failed to load custom templates:", error);
-            return [];
+    // Get all custom templates from DataStore
+    static async getCustomTemplates(): Promise<EmbedTemplate[]> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.getCustomTemplates();
+    }
+
+    // Save a new custom template
+    static async saveCustomTemplate(template: Omit<EmbedTemplate, "id" | "isBuiltIn" | "createdAt" | "updatedAt">): Promise<EmbedTemplate | null> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.addCustomTemplate(template);
+    }
+
+    // Update an existing custom template
+    static async updateCustomTemplate(id: string, updates: Partial<EmbedTemplate>): Promise<boolean> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.updateCustomTemplate(id, updates);
+    }
+
+    // Delete a custom template
+    static async deleteCustomTemplate(id: string): Promise<boolean> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.deleteCustomTemplate(id);
+    }
+
+    // Get all templates (built-in + custom)
+    static async getAllTemplates(): Promise<EmbedTemplate[]> {
+        const customTemplates = await this.getCustomTemplates();
+        return [...BUILTIN_TEMPLATES, ...customTemplates];
+    }
+
+    // Get templates by category
+    static async getTemplatesByCategory(category: string): Promise<EmbedTemplate[]> {
+        const allTemplates = await this.getAllTemplates();
+        return allTemplates.filter(t => t.category === category);
+    }
+
+    // Get template by ID
+    static async getTemplateById(id: string): Promise<EmbedTemplate | null> {
+        // Check built-in templates first
+        const builtIn = BUILTIN_TEMPLATES.find(t => t.id === id);
+        if (builtIn) return builtIn;
+
+        // Check custom templates
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.getTemplateById(id);
+    }
+
+    // Get favorite templates
+    static async getFavoriteTemplates(): Promise<EmbedTemplate[]> {
+        const { VencordStorage } = await import("./VencordStorage");
+        const userData = await VencordStorage.getUserData();
+        const allTemplates = await this.getAllTemplates();
+
+        return allTemplates.filter(t => userData.favoriteTemplates.includes(t.id));
+    }
+
+    // Get recent templates
+    static async getRecentTemplates(): Promise<EmbedTemplate[]> {
+        const { VencordStorage } = await import("./VencordStorage");
+        const userData = await VencordStorage.getUserData();
+        const allTemplates = await this.getAllTemplates();
+
+        // Return templates in the order they appear in recent list
+        const recentTemplates: EmbedTemplate[] = [];
+        for (const templateId of userData.recentTemplates) {
+            const template = allTemplates.find(t => t.id === templateId);
+            if (template) recentTemplates.push(template);
         }
+
+        return recentTemplates;
     }
 
-    static saveCustomTemplate(template: Omit<EmbedTemplate, "id" | "isBuiltIn" | "createdAt" | "updatedAt">): EmbedTemplate {
-        const newTemplate: EmbedTemplate = {
-            ...template,
-            id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            isBuiltIn: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
+    // Add template to favorites
+    static async addToFavorites(templateId: string): Promise<boolean> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.addToFavorites(templateId);
+    }
 
-        const customTemplates = this.getCustomTemplates();
-        customTemplates.push(newTemplate);
+    // Remove template from favorites
+    static async removeFromFavorites(templateId: string): Promise<boolean> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.removeFromFavorites(templateId);
+    }
 
-        try {
-            if (typeof localStorage !== 'undefined') {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+    // Mark template as recently used
+    static async markAsRecentlyUsed(templateId: string): Promise<boolean> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.addToRecentTemplates(templateId);
+    }
+
+    // Get templates grouped by category
+    static async getTemplatesGroupedByCategory(): Promise<Record<string, EmbedTemplate[]>> {
+        const allTemplates = await this.getAllTemplates();
+        const grouped: Record<string, EmbedTemplate[]> = {};
+
+        // Initialize with all categories
+        Object.values(TEMPLATE_CATEGORIES).forEach(category => {
+            grouped[category] = [];
+        });
+
+        // Group templates
+        allTemplates.forEach(template => {
+            if (!grouped[template.category]) {
+                grouped[template.category] = [];
             }
-            return newTemplate;
-        } catch (error) {
-            console.error("Failed to save template:", error);
-            throw new Error("Failed to save template");
-        }
-    }
+            grouped[template.category].push(template);
+        });
 
-    static updateCustomTemplate(id: string, updates: Partial<EmbedTemplate>): boolean {
-        const customTemplates = this.getCustomTemplates();
-        const index = customTemplates.findIndex(t => t.id === id);
-
-        if (index === -1) return false;
-
-        customTemplates[index] = {
-            ...customTemplates[index],
-            ...updates,
-            updatedAt: new Date().toISOString()
-        };
-
-        try {
-            if (typeof localStorage !== 'undefined') {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+        // Remove empty categories
+        Object.keys(grouped).forEach(category => {
+            if (grouped[category].length === 0) {
+                delete grouped[category];
             }
-            return true;
-        } catch (error) {
-            console.error("Failed to update template:", error);
-            return false;
-        }
+        });
+
+        return grouped;
     }
 
-    static deleteCustomTemplate(id: string): boolean {
-        const customTemplates = this.getCustomTemplates();
-        const filtered = customTemplates.filter(t => t.id !== id);
+    // Search templates
+    static async searchTemplates(query: string): Promise<EmbedTemplate[]> {
+        const allTemplates = await this.getAllTemplates();
+        const lowercaseQuery = query.toLowerCase();
 
-        if (filtered.length === customTemplates.length) return false;
-
-        try {
-            if (typeof localStorage !== 'undefined') {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-            }
-            return true;
-        } catch (error) {
-            console.error("Failed to delete template:", error);
-            return false;
-        }
+        return allTemplates.filter(template =>
+            template.name.toLowerCase().includes(lowercaseQuery) ||
+            template.description.toLowerCase().includes(lowercaseQuery) ||
+            template.category.toLowerCase().includes(lowercaseQuery) ||
+            template.embedData.title?.toLowerCase().includes(lowercaseQuery) ||
+            template.embedData.description?.toLowerCase().includes(lowercaseQuery)
+        );
     }
 
-    static getAllTemplates(): EmbedTemplate[] {
-        return [...BUILTIN_TEMPLATES, ...this.getCustomTemplates()];
-    }
-
-    static getTemplatesByCategory(category: string): EmbedTemplate[] {
-        return this.getAllTemplates().filter(t => t.category === category);
-    }
-
-    static getTemplateById(id: string): EmbedTemplate | null {
-        return this.getAllTemplates().find(t => t.id === id) || null;
-    }
-
-    static exportTemplates(): string {
-        const customTemplates = this.getCustomTemplates();
+    // Export custom templates
+    static async exportTemplates(): Promise<string> {
+        const customTemplates = await this.getCustomTemplates();
         return JSON.stringify(customTemplates, null, 2);
     }
 
-    static importTemplates(jsonData: string): { success: number; errors: string[]; } {
+    // Import templates
+    static async importTemplates(jsonData: string): Promise<{ success: number; errors: string[]; }> {
         try {
             const templates = JSON.parse(jsonData);
             if (!Array.isArray(templates)) {
@@ -289,23 +331,57 @@ export class TemplateManager {
 
             const results = { success: 0, errors: [] as string[] };
 
-            templates.forEach((template, index) => {
+            for (let i = 0; i < templates.length; i++) {
+                const template = templates[i];
                 try {
-                    this.saveCustomTemplate({
-                        name: template.name || `Imported Template ${index + 1}`,
+                    const saved = await this.saveCustomTemplate({
+                        name: template.name || `Imported Template ${i + 1}`,
                         description: template.description || "",
                         category: template.category || TEMPLATE_CATEGORIES.CUSTOM,
                         embedData: template.embedData || {}
                     });
-                    results.success++;
+
+                    if (saved) {
+                        results.success++;
+                    } else {
+                        results.errors.push(`Template ${i + 1}: Failed to save`);
+                    }
                 } catch (error) {
-                    results.errors.push(`Template ${index + 1}: ${error.message}`);
+                    results.errors.push(`Template ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
                 }
-            });
+            }
 
             return results;
         } catch (error) {
-            return { success: 0, errors: [error.message] };
+            return { success: 0, errors: [error instanceof Error ? error.message : String(error)] };
         }
+    }
+
+    // Clear all custom templates
+    static async clearCustomTemplates(): Promise<boolean> {
+        const { VencordStorage } = await import("./VencordStorage");
+        return await VencordStorage.clearCustomTemplates();
+    }
+
+    // Get template statistics
+    static async getTemplateStats(): Promise<{
+        total: number;
+        builtin: number;
+        custom: number;
+        favorites: number;
+        categories: number;
+    }> {
+        const allTemplates = await this.getAllTemplates();
+        const customTemplates = await this.getCustomTemplates();
+        const favoriteTemplates = await this.getFavoriteTemplates();
+        const categories = await this.getTemplatesGroupedByCategory();
+
+        return {
+            total: allTemplates.length,
+            builtin: BUILTIN_TEMPLATES.length,
+            custom: customTemplates.length,
+            favorites: favoriteTemplates.length,
+            categories: Object.keys(categories).length
+        };
     }
 }
