@@ -4,910 +4,389 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, ModalSize } from "@utils/modal";
+import { ModalCloseButton, ModalContent, ModalHeader, ModalRoot, ModalSize } from "@utils/modal";
 import { React, useState, useEffect } from "@webpack/common";
-import { GuildStore, ChannelStore, GuildChannelStore } from "@webpack/common";
-import { ActivityTracker } from "../utils/activityTracker";
-import { getTimeRanges, formatHour, formatDate } from "../utils/timeUtils";
-import { Heatmap } from "./Heatmap";
+import { GuildStore, ChannelStore } from "@webpack/common";
+import { ActivityChart } from "./ActivityChart";
 import { ExportControls } from "./ExportControls";
-import { HistoryFetcher, fetchGuildChannels, estimateHistorySize } from "../utils/historyFetcher";
-import { settings } from "../settings";
+import { HistoryFetcher } from "../utils/historyFetcher";
 
-interface GraphPanelProps extends ModalProps {
+interface GraphPanelProps {
     guildId: string;
-    activityTracker: ActivityTracker;
+    onClose: () => void;
 }
 
-export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelProps) {
-    const [timeRange, setTimeRange] = useState(settings.store.defaultTimeRange);
-    const [selectedChannel, setSelectedChannel] = useState<string>("all");
-    const [chartType, setChartType] = useState<"bar" | "line" | "heatmap">("bar");
-    const [activityData, setActivityData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [autoRefresh, setAutoRefresh] = useState(true);
-    const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
-    const [historyFetcher] = useState(new HistoryFetcher());
-    const [fetchingHistory, setFetchingHistory] = useState(false);
-    const [fetchProgress, setFetchProgress] = useState<{ current: number; total: number; channel: string; } | null>(null);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
+export function GraphPanel({ guildId, onClose, ...props }: GraphPanelProps & any) {
+    const [timeRange, setTimeRange] = useState("7d");
+    const [selectedChannel, setSelectedChannel] = useState("all");
+    const [activityData, setActivityData] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [historyProgress, setHistoryProgress] = useState<{ current: number; total: number; channel: string } | null>(null);
+    const [isHistoryFetching, setIsHistoryFetching] = useState(false);
 
     const guild = GuildStore.getGuild(guildId);
-    const channels = guild ? GuildChannelStore.getChannels(guildId) : { SELECTABLE: [], VOCAL: [] };
-    const textChannels = channels.SELECTABLE ? channels.SELECTABLE.map((ch: any) => ch.channel).filter((ch: any) => ch.type === 0) : [];
+    const channels = Object.values(ChannelStore.getGuildChannels(guildId) || {})
+        .filter((channel: any) => channel.type === 0) // Text channels only
+        .sort((a: any, b: any) => a.position - b.position);
+
+    const historyFetcher = React.useMemo(() => new HistoryFetcher(guildId), [guildId]);
 
     useEffect(() => {
         loadActivityData();
-    }, [guildId, timeRange, selectedChannel]);
-
-    // Auto-refresh effect
-    useEffect(() => {
-        if (!autoRefresh) return;
-
-        const interval = setInterval(() => {
-            loadActivityData();
-            setLastUpdate(Date.now());
-        }, 30000); // Refresh every 30 seconds
-
-        return () => clearInterval(interval);
-    }, [autoRefresh, guildId, timeRange, selectedChannel]);
-
-    // Listen for new messages to trigger updates
-    useEffect(() => {
-        const handleNewMessage = () => {
-            if (autoRefresh) {
-                // Debounced update - only update if last update was more than 5 seconds ago
-                const now = Date.now();
-                if (now - lastUpdate > 5000) {
-                    loadActivityData();
-                    setLastUpdate(now);
-                }
-            }
-        };
-
-        // Listen for activity tracker updates
-        const checkForUpdates = setInterval(() => {
-            if (autoRefresh && activityTracker) {
-                const guildData = activityTracker.getGuildData(guildId);
-                if (guildData && guildData.lastSaved > lastUpdate) {
-                    loadActivityData();
-                    setLastUpdate(Date.now());
-                }
-            }
-        }, 5000);
-
-        return () => clearInterval(checkForUpdates);
-    }, [autoRefresh, lastUpdate, guildId, activityTracker]);
-
-    // Auto-fetch history on open if enabled
-    useEffect(() => {
-        if (settings.store.autoFetchOnOpen && settings.store.enableHistoryFetching && !fetchingHistory) {
-            handleFetchHistory();
-        }
-    }, [guildId]);
-
-    const handleFetchHistory = async () => {
-        if (fetchingHistory || !settings.store.enableHistoryFetching) return;
-
-        setFetchingHistory(true);
-        setFetchProgress(null);
-
-        try {
-            const channelIds = textChannels.map(ch => ch.id);
-
-            if (channelIds.length === 0) {
-                console.warn("No text channels found to fetch history from");
-                return;
-            }
-
-            const result = await historyFetcher.fetchHistory({
-                guildId,
-                channelIds,
-                daysBack: Math.min(settings.store.historyFetchDays, 30),
-                maxMessagesPerChannel: settings.store.maxMessagesPerChannel,
-                onProgress: (progress) => {
-                    setFetchProgress(progress);
-                }
-            });
-
-            // Add fetched messages to activity tracker
-            for (const message of result.messages) {
-                activityTracker.trackMessage(message);
-            }
-
-            // Refresh the display
-            loadActivityData();
-            setLastUpdate(Date.now());
-
-            console.log(`Fetched ${result.totalMessages} messages from ${result.channelsProcessed} channels`);
-
-            if (result.errors.length > 0) {
-                console.warn("Some channels had errors:", result.errors);
-            }
-
-        } catch (error) {
-            console.error("Failed to fetch history:", error);
-        } finally {
-            setFetchingHistory(false);
-            setFetchProgress(null);
-        }
-    };
-
-    const stopHistoryFetch = () => {
-        historyFetcher.stop();
-        setFetchingHistory(false);
-        setFetchProgress(null);
-    };
+    }, [timeRange, selectedChannel, guildId]);
 
     const loadActivityData = () => {
-        setLoading(true);
+        setIsLoading(true);
+        // Simulate loading activity data
+        setTimeout(() => {
+            const mockData = generateMockData();
+            setActivityData(mockData);
+            setIsLoading(false);
+        }, 500);
+    };
+
+    const generateMockData = () => {
+        const data = [];
+        const now = new Date();
+        const days = timeRange === "24h" ? 1 : timeRange === "7d" ? 7 : 30;
+        
+        for (let i = days - 1; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            
+            data.push({
+                date: date.toISOString().split('T')[0],
+                messages: Math.floor(Math.random() * 100) + 10,
+                users: Math.floor(Math.random() * 20) + 5,
+                channels: selectedChannel === "all" ? channels.length : 1
+            });
+        }
+        
+        return data;
+    };
+
+    const handleHistoryFetch = async () => {
+        setIsHistoryFetching(true);
+        setHistoryProgress({ current: 0, total: channels.length, channel: "Starting..." });
 
         try {
-            const timeRanges = getTimeRanges();
-            const range = timeRanges[timeRange];
-            const days = Math.ceil((range.end - range.start) / (24 * 60 * 60 * 1000));
-
-            const hourlyData = activityTracker.getHourlyActivity(guildId, days);
-            const dailyData = activityTracker.getDailyActivity(guildId, days);
-            const channelData = activityTracker.getChannelActivity(guildId, days);
-            const topUsers = activityTracker.getTopUsers(guildId, days, 10);
-            const pingStats = activityTracker.getPingStats(guildId, days);
-            const joinLeaveStats = activityTracker.getJoinLeaveStats(guildId, days);
-            const summaryStats = activityTracker.getSummaryStats(guildId, days);
-            const trendAnalysis = activityTracker.getTrendAnalysis(guildId, days);
-            const activityPatterns = activityTracker.getActivityPatterns(guildId, Math.max(days, 30));
-            const growthMetrics = activityTracker.getGrowthMetrics(guildId, Math.max(days, 30));
-
-            setActivityData({
-                hourly: hourlyData,
-                daily: dailyData,
-                channels: channelData,
-                topUsers,
-                pings: pingStats,
-                joinLeave: joinLeaveStats,
-                summary: summaryStats,
-                trends: trendAnalysis,
-                patterns: activityPatterns,
-                growth: growthMetrics,
-                timeRange: range,
-                days
+            await historyFetcher.fetchHistory({
+                days: parseInt(timeRange.replace(/\D/g, '')) || 7,
+                onProgress: (progress) => {
+                    setHistoryProgress(progress);
+                }
             });
+            
+            // Reload activity data after fetching
+            loadActivityData();
         } catch (error) {
-            console.error("Failed to load activity data:", error);
+            console.error("History fetch failed:", error);
+        } finally {
+            setIsHistoryFetching(false);
+            setHistoryProgress(null);
         }
-
-        setLoading(false);
     };
 
-    const getChartData = () => {
-        if (!activityData) return { labels: [], data: [] };
-
-        if (chartType === "bar" || chartType === "line") {
-            if (timeRange === "24h" || timeRange === "6h" || timeRange === "1h") {
-                // Show hourly data
-                const labels = Object.keys(activityData.hourly)
-                    .sort((a, b) => parseInt(a) - parseInt(b))
-                    .map(hour => formatHour(parseInt(hour)));
-                const data = Object.keys(activityData.hourly)
-                    .sort((a, b) => parseInt(a) - parseInt(b))
-                    .map(hour => activityData.hourly[hour] || 0);
-                return { labels, data };
-            } else {
-                // Show daily data
-                const labels = Object.keys(activityData.daily)
-                    .sort()
-                    .map(date => formatDate(date));
-                const data = Object.keys(activityData.daily)
-                    .sort()
-                    .map(date => activityData.daily[date] || 0);
-                return { labels, data };
-            }
-        }
-
-        return { labels: [], data: [] };
+    const themeColors = {
+        primary: "#4fc3f7",
+        secondary: "#0277bd",
+        background: "#e3f2fd",
+        text: "#0277bd",
+        textMuted: "#546e7a"
     };
-
-    const getThemeColors = () => {
-        const theme = settings.store.chartTheme;
-        const themes = {
-            blue: { primary: "#29b6f6", secondary: "#0277bd", gradient: "linear-gradient(135deg, #29b6f6, #0277bd)" },
-            purple: { primary: "#ab47bc", secondary: "#6a1b9a", gradient: "linear-gradient(135deg, #ab47bc, #6a1b9a)" },
-            green: { primary: "#66bb6a", secondary: "#2e7d32", gradient: "linear-gradient(135deg, #66bb6a, #2e7d32)" },
-            orange: { primary: "#ff9800", secondary: "#e65100", gradient: "linear-gradient(135deg, #ff9800, #e65100)" },
-            pink: { primary: "#ec4899", secondary: "#be185d", gradient: "linear-gradient(135deg, #ec4899, #be185d)" }
-        };
-        return themes[theme as keyof typeof themes] || themes.blue;
-    };
-
-    const chartData = getChartData();
-    const themeColors = getThemeColors();
 
     return (
-        <ModalRoot {...props} size={ModalSize.DYNAMIC}>
+        <ModalRoot {...props} size={ModalSize.LARGE}>
             <ModalHeader>
-                <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                <div style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "space-between", 
                     width: "100%",
                     background: "linear-gradient(135deg, #e3f2fd, #bbdefb)",
                     borderBottom: "2px solid #4fc3f7",
-                    padding: "16px 20px",
+                    padding: "20px 24px",
                     borderRadius: "8px 8px 0 0"
                 }}>
-                    <h2 style={{
-                        margin: 0,
-                        color: "#0277bd",
-                        fontSize: "22px",
+                    <h2 style={{ 
+                        margin: 0, 
+                        color: "#0277bd", 
+                        fontSize: "24px", 
                         fontWeight: "700",
                         textShadow: "0 1px 2px rgba(2, 119, 189, 0.1)"
                     }}>
                         Server Activity Analytics - {guild?.name || "Unknown Server"}
                     </h2>
-                    <ModalCloseButton onClick={props.onClose} />
+                    <ModalCloseButton onClick={onClose} />
                 </div>
             </ModalHeader>
 
-            <ModalContent style={{
-                padding: "20px",
-                maxHeight: "80vh",
-                overflow: "auto",
-                background: "linear-gradient(135deg, #fafafa, #f5f5f5)"
-            }}>
-                {/* Controls */}
-                <div style={{
-                    display: "flex",
-                    gap: "16px",
-                    marginBottom: "20px",
-                    padding: "16px",
-                    background: "rgba(79, 195, 247, 0.1)",
-                    borderRadius: "12px",
-                    border: "1px solid #4fc3f7",
-                    flexWrap: "wrap"
+            <ModalContent 
+                className="activity-panel-scrollbar"
+                style={{ 
+                    padding: "24px", 
+                    maxHeight: "85vh", 
+                    overflow: "auto",
+                    background: "linear-gradient(135deg, #fafafa, #f5f5f5)",
+                    minWidth: "1200px",
+                    minHeight: "700px"
                 }}>
-                    <div style={{ flex: 1, minWidth: "150px" }}>
-                        <label style={{
-                            display: "block",
-                            marginBottom: "6px",
-                            fontSize: "13px",
-                            fontWeight: "600",
-                            color: "#0277bd"
+                
+                <div style={{ display: "flex", gap: "24px", height: "100%" }}>
+                    {/* Left Panel - Controls */}
+                    <div style={{ 
+                        width: "300px",
+                        background: "rgba(255, 255, 255, 0.9)",
+                        border: "2px solid #4fc3f7",
+                        borderRadius: "12px",
+                        padding: "24px",
+                        boxShadow: "0 4px 6px rgba(79, 195, 247, 0.1)",
+                        height: "fit-content"
+                    }}>
+                        <h3 style={{ 
+                            margin: "0 0 20px 0", 
+                            color: "#0277bd", 
+                            fontSize: "18px",
+                            fontWeight: "600"
                         }}>
-                            Time Range
-                        </label>
-                        <select
-                            value={timeRange}
-                            onChange={(e) => setTimeRange(e.target.value)}
-                            style={{
-                                width: "100%",
-                                padding: "8px",
-                                border: "2px solid #4fc3f7",
-                                borderRadius: "6px",
-                                fontSize: "14px",
-                                background: "white",
-                                color: "#0277bd"
-                            }}
-                        >
-                            {Object.entries(getTimeRanges()).map(([key, range]) => (
-                                <option key={key} value={key}>{range.label}</option>
-                            ))}
-                        </select>
-                    </div>
+                            Analytics Controls
+                        </h3>
 
-                    <div style={{ flex: 1, minWidth: "150px" }}>
-                        <label style={{
-                            display: "block",
-                            marginBottom: "6px",
-                            fontSize: "13px",
-                            fontWeight: "600",
-                            color: "#0277bd"
-                        }}>
-                            Channel
-                        </label>
-                        <select
-                            value={selectedChannel}
-                            onChange={(e) => setSelectedChannel(e.target.value)}
-                            style={{
-                                width: "100%",
-                                padding: "8px",
-                                border: "2px solid #4fc3f7",
-                                borderRadius: "6px",
+                        {/* Time Range */}
+                        <div style={{ marginBottom: "20px" }}>
+                            <label style={{ 
+                                display: "block", 
+                                marginBottom: "8px", 
+                                color: "#0277bd", 
                                 fontSize: "14px",
-                                background: "white",
-                                color: "#0277bd"
-                            }}
-                        >
-                            <option value="all">All Channels</option>
-                            {textChannels.map((channel: any) => (
-                                <option key={channel.id} value={channel.id}>
-                                    #{channel.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: "150px" }}>
-                        <label style={{
-                            display: "block",
-                            marginBottom: "6px",
-                            fontSize: "13px",
-                            fontWeight: "600",
-                            color: "#0277bd"
-                        }}>
-                            Chart Type
-                        </label>
-                        <select
-                            value={chartType}
-                            onChange={(e) => setChartType(e.target.value as any)}
-                            style={{
-                                width: "100%",
-                                padding: "8px",
-                                border: "2px solid #4fc3f7",
-                                borderRadius: "6px",
-                                fontSize: "14px",
-                                background: "white",
-                                color: "#0277bd"
-                            }}
-                        >
-                            <option value="bar">Bar Chart</option>
-                            <option value="line">Line Chart</option>
-                            <option value="heatmap">Heatmap</option>
-                        </select>
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: "150px" }}>
-                        <label style={{
-                            display: "block",
-                            marginBottom: "6px",
-                            fontSize: "13px",
-                            fontWeight: "600",
-                            color: "#0277bd"
-                        }}>
-                            Auto-Refresh
-                        </label>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
-                            <label style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                fontSize: "13px",
-                                color: "#0277bd",
-                                fontWeight: "500",
-                                cursor: "pointer"
+                                fontWeight: "500"
                             }}>
-                                <input
-                                    type="checkbox"
-                                    checked={autoRefresh}
-                                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                                    style={{
-                                        accentColor: "#29b6f6",
-                                        transform: "scale(1.1)"
-                                    }}
-                                />
-                                Live Updates
+                                Time Range
                             </label>
+                            <select
+                                value={timeRange}
+                                onChange={(e) => setTimeRange(e.target.value)}
+                                className="activity-select"
+                            >
+                                <option value="24h">Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                                <option value="30d">Last 30 Days</option>
+                            </select>
                         </div>
-                        <div style={{
-                            fontSize: "10px",
-                            color: "#666",
-                            marginTop: "4px",
-                            fontStyle: "italic"
-                        }}>
-                            Last: {new Date(lastUpdate).toLocaleTimeString()}
-                        </div>
-                    </div>
 
-                    {/* History Fetching Controls */}
-                    {settings.store.enableHistoryFetching && (
-                        <div style={{ flex: 1, minWidth: "200px" }}>
-                            <label style={{
-                                display: "block",
-                                marginBottom: "6px",
-                                fontSize: "13px",
-                                fontWeight: "600",
-                                color: "#0277bd"
+                        {/* Channel Filter */}
+                        <div style={{ marginBottom: "20px" }}>
+                            <label style={{ 
+                                display: "block", 
+                                marginBottom: "8px", 
+                                color: "#0277bd", 
+                                fontSize: "14px",
+                                fontWeight: "500"
+                            }}>
+                                Channel Filter
+                            </label>
+                            <select
+                                value={selectedChannel}
+                                onChange={(e) => setSelectedChannel(e.target.value)}
+                                className="activity-select"
+                            >
+                                <option value="all">All Channels</option>
+                                {channels.map((channel: any) => (
+                                    <option key={channel.id} value={channel.id}>
+                                        #{channel.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* History Fetching */}
+                        <div style={{ marginBottom: "20px" }}>
+                            <h4 style={{ 
+                                margin: "0 0 12px 0", 
+                                color: "#0277bd", 
+                                fontSize: "16px",
+                                fontWeight: "600"
                             }}>
                                 History Fetching
-                            </label>
-                            <div style={{ display: "flex", gap: "8px", flexDirection: "column" }}>
-                                <button
-                                    onClick={handleFetchHistory}
-                                    disabled={fetchingHistory}
-                                    style={{
-                                        padding: "6px 12px",
-                                        background: fetchingHistory ? "#e0e0e0" : "linear-gradient(135deg, #29b6f6, #0277bd)",
-                                        color: fetchingHistory ? "#999" : "white",
-                                        border: "none",
-                                        borderRadius: "6px",
-                                        fontSize: "12px",
-                                        fontWeight: "600",
-                                        cursor: fetchingHistory ? "not-allowed" : "pointer",
-                                        boxShadow: fetchingHistory ? "none" : "0 2px 4px rgba(2, 119, 189, 0.3)"
-                                    }}
-                                >
-                                    {fetchingHistory ? "Fetching..." : "Fetch History"}
-                                </button>
-                                {fetchingHistory && (
-                                    <button
-                                        onClick={stopHistoryFetch}
-                                        style={{
-                                            padding: "4px 8px",
-                                            background: "#f44336",
-                                            color: "white",
-                                            border: "none",
-                                            borderRadius: "4px",
-                                            fontSize: "11px",
-                                            cursor: "pointer"
-                                        }}
-                                    >
-                                        Stop
-                                    </button>
-                                )}
-                            </div>
-                            {fetchProgress && (
-                                <div style={{
-                                    fontSize: "10px",
-                                    color: "#666",
-                                    marginTop: "4px",
-                                    fontStyle: "italic"
+                            </h4>
+                            
+                            {historyProgress && (
+                                <div style={{ 
+                                    marginBottom: "12px",
+                                    padding: "12px",
+                                    background: "#e3f2fd",
+                                    borderRadius: "8px",
+                                    border: "1px solid #4fc3f7"
                                 }}>
-                                    {fetchProgress.current}/{fetchProgress.total} channels
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {loading ? (
-                    <div style={{
-                        textAlign: "center",
-                        padding: "60px 20px",
-                        color: "#0277bd",
-                        fontSize: "16px"
-                    }}>
-                        📊 Loading activity data...
-                    </div>
-                ) : (
-                    <div>
-                        {/* Chart Area */}
-                        <div style={{
-                            marginBottom: "24px",
-                            padding: "20px",
-                            background: "white",
-                            border: "2px solid #4fc3f7",
-                            borderRadius: "12px",
-                            boxShadow: "0 4px 6px rgba(79, 195, 247, 0.1)"
-                        }}>
-                            {chartType === "heatmap" ? (
-                                <Heatmap
-                                    guildId={guildId}
-                                    activityTracker={activityTracker}
-                                    days={activityData?.days || 7}
-                                    themeColors={themeColors}
-                                />
-                            ) : (
-                                <div>
-                                    <h3 style={{
-                                        margin: "0 0 16px 0",
-                                        color: "#0277bd",
-                                        fontSize: "18px",
-                                        fontWeight: "600"
+                                    <div style={{ fontSize: "12px", color: "#0277bd", marginBottom: "4px" }}>
+                                        {historyProgress.current}/{historyProgress.total} channels
+                                    </div>
+                                    <div style={{ fontSize: "11px", color: "#546e7a" }}>
+                                        {historyProgress.channel}
+                                    </div>
+                                    <div style={{ 
+                                        width: "100%", 
+                                        height: "4px", 
+                                        background: "#bbdefb", 
+                                        borderRadius: "2px",
+                                        marginTop: "8px"
                                     }}>
-                                        Message Activity ({chartType === "bar" ? "Bar Chart" : "Line Chart"})
-                                    </h3>
-
-                                    {/* Enhanced chart visualization */}
-                                    <div style={{ height: "320px", position: "relative" }}>
-                                        {chartType === "line" ? (
-                                            // Line chart
-                                            <svg width="100%" height="300" style={{ overflow: "visible" }}>
-                                                <defs>
-                                                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                                        <stop offset="0%" stopColor={themeColors.primary} stopOpacity="0.3" />
-                                                        <stop offset="100%" stopColor={themeColors.primary} stopOpacity="0.1" />
-                                                    </linearGradient>
-                                                </defs>
-                                                {chartData.data.length > 1 && (() => {
-                                                    const maxValue = Math.max(...chartData.data, 1);
-                                                    const width = 100 / chartData.data.length;
-
-                                                    // Create path for line
-                                                    let pathData = "";
-                                                    let areaData = "";
-
-                                                    chartData.data.forEach((value, index) => {
-                                                        const x = (index / (chartData.data.length - 1)) * 100;
-                                                        const y = 100 - ((value / maxValue) * 90);
-
-                                                        if (index === 0) {
-                                                            pathData += `M ${x} ${y}`;
-                                                            areaData += `M ${x} 100 L ${x} ${y}`;
-                                                        } else {
-                                                            pathData += ` L ${x} ${y}`;
-                                                            areaData += ` L ${x} ${y}`;
-                                                        }
-
-                                                        if (index === chartData.data.length - 1) {
-                                                            areaData += ` L ${x} 100 Z`;
-                                                        }
-                                                    });
-
-                                                    return (
-                                                        <>
-                                                            {/* Area fill */}
-                                                            <path
-                                                                d={areaData}
-                                                                fill="url(#lineGradient)"
-                                                                style={{
-                                                                    animation: "fadeIn 0.8s ease-in-out",
-                                                                    transformOrigin: "bottom"
-                                                                }}
-                                                            />
-                                                            {/* Line */}
-                                                            <path
-                                                                d={pathData}
-                                                                fill="none"
-                                                                stroke={themeColors.primary}
-                                                                strokeWidth="3"
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                style={{
-                                                                    animation: "drawLine 1.2s ease-in-out",
-                                                                    strokeDasharray: "1000",
-                                                                    strokeDashoffset: "1000"
-                                                                }}
-                                                            />
-                                                            {/* Data points */}
-                                                            {chartData.data.map((value, index) => {
-                                                                const x = (index / (chartData.data.length - 1)) * 100;
-                                                                const y = 100 - ((value / maxValue) * 90);
-
-                                                                return (
-                                                                    <circle
-                                                                        key={index}
-                                                                        cx={`${x}%`}
-                                                                        cy={`${y}%`}
-                                                                        r="4"
-                                                                        fill={themeColors.secondary}
-                                                                        stroke="white"
-                                                                        strokeWidth="2"
-                                                                        style={{
-                                                                            animation: `popIn 0.6s ease-in-out ${index * 0.1}s both`,
-                                                                            cursor: "pointer"
-                                                                        }}
-                                                                    >
-                                                                        <title>{`${chartData.labels[index]}: ${value} messages`}</title>
-                                                                    </circle>
-                                                                );
-                                                            })}
-                                                        </>
-                                                    );
-                                                })()}
-                                            </svg>
-                                        ) : (
-                                            // Enhanced bar chart
-                                            <div style={{ height: "300px", display: "flex", alignItems: "end", gap: "4px" }}>
-                                                {chartData.data.map((value, index) => {
-                                                    const maxValue = Math.max(...chartData.data, 1);
-                                                    const height = (value / maxValue) * 280;
-
-                                                    return (
-                                                        <div key={index} style={{
-                                                            flex: 1,
-                                                            display: "flex",
-                                                            flexDirection: "column",
-                                                            alignItems: "center",
-                                                            gap: "4px",
-                                                            position: "relative"
-                                                        }}>
-                                                            {/* Value label */}
-                                                            <div style={{
-                                                                fontSize: "10px",
-                                                                color: "#0277bd",
-                                                                fontWeight: "600",
-                                                                opacity: value > 0 ? 1 : 0,
-                                                                transition: "opacity 0.3s ease"
-                                                            }}>
-                                                                {value}
-                                                            </div>
-
-                                                            {/* Bar */}
-                                                            <div
-                                                                style={{
-                                                                    width: "100%",
-                                                                    height: `${height}px`,
-                                                                    background: themeColors.gradient,
-                                                                    borderRadius: "6px 6px 0 0",
-                                                                    minHeight: value > 0 ? "3px" : "0px",
-                                                                    position: "relative",
-                                                                    cursor: "pointer",
-                                                                    transition: "all 0.3s ease",
-                                                                    animation: `growUp 0.8s ease-out ${index * 0.05}s both`,
-                                                                    boxShadow: value > 0 ? "0 2px 4px rgba(79, 195, 247, 0.3)" : "none"
-                                                                }}
-                                                                onMouseEnter={(e) => {
-                                                                    e.currentTarget.style.transform = "scaleY(1.05)";
-                                                                    e.currentTarget.style.filter = "brightness(1.1)";
-                                                                }}
-                                                                onMouseLeave={(e) => {
-                                                                    e.currentTarget.style.transform = "scaleY(1)";
-                                                                    e.currentTarget.style.filter = "brightness(1)";
-                                                                }}
-                                                                title={`${chartData.labels[index]}: ${value} messages`}
-                                                            />
-
-                                                            {/* Label */}
-                                                            <div style={{
-                                                                fontSize: "9px",
-                                                                color: "#666",
-                                                                transform: "rotate(-45deg)",
-                                                                transformOrigin: "center",
-                                                                whiteSpace: "nowrap",
-                                                                marginTop: "8px",
-                                                                fontWeight: "500"
-                                                            }}>
-                                                                {chartData.labels[index]}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-
-                                        {/* Chart animations */}
-                                        <style>{`
-                                            @keyframes growUp {
-                                                from {
-                                                    height: 0px;
-                                                    opacity: 0;
-                                                }
-                                                to {
-                                                    opacity: 1;
-                                                }
-                                            }
-
-                                            @keyframes drawLine {
-                                                to {
-                                                    stroke-dashoffset: 0;
-                                                }
-                                            }
-
-                                            @keyframes popIn {
-                                                from {
-                                                    transform: scale(0);
-                                                    opacity: 0;
-                                                }
-                                                to {
-                                                    transform: scale(1);
-                                                    opacity: 1;
-                                                }
-                                            }
-
-                                            @keyframes fadeIn {
-                                                from {
-                                                    opacity: 0;
-                                                    transform: scaleY(0);
-                                                }
-                                                to {
-                                                    opacity: 1;
-                                                    transform: scaleY(1);
-                                                }
-                                            }
-                                        `}</style>
+                                        <div style={{ 
+                                            width: `${(historyProgress.current / historyProgress.total) * 100}%`, 
+                                            height: "100%", 
+                                            background: "#4fc3f7", 
+                                            borderRadius: "2px",
+                                            transition: "width 0.3s ease"
+                                        }} />
                                     </div>
                                 </div>
                             )}
+                            
+                            <button
+                                onClick={handleHistoryFetch}
+                                disabled={isHistoryFetching}
+                                style={{
+                                    width: "100%",
+                                    padding: "12px 16px",
+                                    background: isHistoryFetching ? "#bbdefb" : "linear-gradient(135deg, #4fc3f7, #0277bd)",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "8px",
+                                    fontSize: "14px",
+                                    fontWeight: "600",
+                                    cursor: isHistoryFetching ? "not-allowed" : "pointer",
+                                    boxShadow: "0 2px 4px rgba(79, 195, 247, 0.3)",
+                                    transition: "all 0.2s ease"
+                                }}
+                            >
+                                {isHistoryFetching ? "Fetching..." : "Fetch History"}
+                            </button>
                         </div>
-
-                        {/* Summary Stats */}
-                        {activityData?.summary && (
-                            <div style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                                gap: "16px",
-                                marginBottom: "24px"
-                            }}>
-                                <div style={{
-                                    padding: "16px",
-                                    background: "white",
-                                    border: "2px solid #4fc3f7",
-                                    borderRadius: "12px",
-                                    textAlign: "center"
-                                }}>
-                                    <div style={{ fontSize: "24px", fontWeight: "700", color: "#0277bd" }}>
-                                        {activityData.summary.totalMessages}
-                                    </div>
-                                    <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
-                                        Total Messages
-                                    </div>
-                                    {activityData.trends && (
-                                        <div style={{
-                                            fontSize: "10px",
-                                            color: activityData.trends.change.messagesPercent > 0 ? "#4caf50" : activityData.trends.change.messagesPercent < 0 ? "#f44336" : "#666",
-                                            marginTop: "2px",
-                                            fontWeight: "600"
-                                        }}>
-                                            {activityData.trends.change.messagesPercent > 0 ? "↗" : activityData.trends.change.messagesPercent < 0 ? "↘" : "→"}
-                                            {Math.abs(activityData.trends.change.messagesPercent).toFixed(1)}%
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{
-                                    padding: "16px",
-                                    background: "white",
-                                    border: "2px solid #4fc3f7",
-                                    borderRadius: "12px",
-                                    textAlign: "center"
-                                }}>
-                                    <div style={{ fontSize: "24px", fontWeight: "700", color: "#0277bd" }}>
-                                        {activityData.summary.uniqueUsers}
-                                    </div>
-                                    <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
-                                        Active Users
-                                    </div>
-                                    {activityData.trends && (
-                                        <div style={{
-                                            fontSize: "10px",
-                                            color: activityData.trends.change.usersPercent > 0 ? "#4caf50" : activityData.trends.change.usersPercent < 0 ? "#f44336" : "#666",
-                                            marginTop: "2px",
-                                            fontWeight: "600"
-                                        }}>
-                                            {activityData.trends.change.usersPercent > 0 ? "↗" : activityData.trends.change.usersPercent < 0 ? "↘" : "→"}
-                                            {Math.abs(activityData.trends.change.usersPercent).toFixed(1)}%
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{
-                                    padding: "16px",
-                                    background: "white",
-                                    border: "2px solid #4fc3f7",
-                                    borderRadius: "12px",
-                                    textAlign: "center"
-                                }}>
-                                    <div style={{ fontSize: "24px", fontWeight: "700", color: "#0277bd" }}>
-                                        {activityData.summary.mostActiveHour ? formatHour(activityData.summary.mostActiveHour.hour) : "N/A"}
-                                    </div>
-                                    <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
-                                        Most Active Hour
-                                    </div>
-                                    {activityData.patterns && (
-                                        <div style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>
-                                            Quiet: {formatHour(activityData.patterns.quiet.hour.time)}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{
-                                    padding: "16px",
-                                    background: "white",
-                                    border: "2px solid #4fc3f7",
-                                    borderRadius: "12px",
-                                    textAlign: "center"
-                                }}>
-                                    <div style={{ fontSize: "24px", fontWeight: "700", color: "#0277bd" }}>
-                                        {Math.round(activityData.summary.averagePerDay)}
-                                    </div>
-                                    <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
-                                        Avg Messages/Day
-                                    </div>
-                                    {activityData.growth && (
-                                        <div style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>
-                                            Next week: ~{activityData.growth.projections.messagesNextWeek}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Trend Analysis */}
-                        {activityData?.trends && (
-                            <div style={{
-                                marginBottom: "24px",
-                                padding: "20px",
-                                background: "white",
-                                border: "2px solid #4fc3f7",
-                                borderRadius: "12px",
-                                boxShadow: "0 4px 6px rgba(79, 195, 247, 0.1)"
-                            }}>
-                                <h3 style={{
-                                    margin: "0 0 16px 0",
-                                    color: "#0277bd",
-                                    fontSize: "18px",
-                                    fontWeight: "600"
-                                }}>
-                                    Trend Analysis - {timeRange.toUpperCase()} vs Previous Period
-                                </h3>
-
-                                <div style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                                    gap: "16px"
-                                }}>
-                                    <div style={{
-                                        padding: "16px",
-                                        background: "rgba(79, 195, 247, 0.05)",
-                                        borderRadius: "8px",
-                                        border: "1px solid #e3f2fd"
-                                    }}>
-                                        <h4 style={{ margin: "0 0 8px 0", color: "#0277bd", fontSize: "14px" }}>
-                                            Activity Trend
-                                        </h4>
-                                        <div style={{ fontSize: "12px", color: "#666", lineHeight: "1.4" }}>
-                                            <div>Current: {activityData.trends.current.messages} messages</div>
-                                            <div>Previous: {activityData.trends.previous.messages} messages</div>
-                                            <div style={{
-                                                color: activityData.trends.change.messagesPercent > 0 ? "#4caf50" : activityData.trends.change.messagesPercent < 0 ? "#f44336" : "#666",
-                                                fontWeight: "600",
-                                                marginTop: "4px"
-                                            }}>
-                                                {activityData.trends.change.messages > 0 ? "+" : ""}{activityData.trends.change.messages} messages
-                                                ({activityData.trends.change.messagesPercent > 0 ? "+" : ""}{activityData.trends.change.messagesPercent.toFixed(1)}%)
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{
-                                        padding: "16px",
-                                        background: "rgba(79, 195, 247, 0.05)",
-                                        borderRadius: "8px",
-                                        border: "1px solid #e3f2fd"
-                                    }}>
-                                        <h4 style={{ margin: "0 0 8px 0", color: "#0277bd", fontSize: "14px" }}>
-                                            User Engagement
-                                        </h4>
-                                        <div style={{ fontSize: "12px", color: "#666", lineHeight: "1.4" }}>
-                                            <div>Current: {activityData.trends.current.users} active users</div>
-                                            <div>Previous: {activityData.trends.previous.users} active users</div>
-                                            <div style={{
-                                                color: activityData.trends.change.usersPercent > 0 ? "#4caf50" : activityData.trends.change.usersPercent < 0 ? "#f44336" : "#666",
-                                                fontWeight: "600",
-                                                marginTop: "4px"
-                                            }}>
-                                                {activityData.trends.change.users > 0 ? "+" : ""}{activityData.trends.change.users} users
-                                                ({activityData.trends.change.usersPercent > 0 ? "+" : ""}{activityData.trends.change.usersPercent.toFixed(1)}%)
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{
-                                        padding: "16px",
-                                        background: "rgba(79, 195, 247, 0.05)",
-                                        borderRadius: "8px",
-                                        border: "1px solid #e3f2fd"
-                                    }}>
-                                        <h4 style={{ margin: "0 0 8px 0", color: "#0277bd", fontSize: "14px" }}>
-                                            Overall Trend
-                                        </h4>
-                                        <div style={{ fontSize: "14px", fontWeight: "600", marginTop: "8px" }}>
-                                            <span style={{
-                                                color: activityData.trends.trend === 'increasing' ? "#4caf50" :
-                                                    activityData.trends.trend === 'decreasing' ? "#f44336" : "#ff9800",
-                                                textTransform: "capitalize"
-                                            }}>
-                                                {activityData.trends.trend === 'increasing' ? "↗ Increasing" :
-                                                    activityData.trends.trend === 'decreasing' ? "↘ Decreasing" : "→ Stable"}
-                                            </span>
-                                        </div>
-                                        <div style={{ fontSize: "11px", color: "#666", marginTop: "4px" }}>
-                                            Server activity is {activityData.trends.trend}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {/* Export Controls */}
-                        <ExportControls
+                        <ExportControls 
                             activityData={activityData}
                             guildName={guild?.name || "Unknown"}
                             timeRange={timeRange}
                             themeColors={themeColors}
                         />
                     </div>
-                )}
+
+                    {/* Right Panel - Chart */}
+                    <div style={{ 
+                        flex: 1,
+                        background: "rgba(255, 255, 255, 0.9)",
+                        border: "2px solid #4fc3f7",
+                        borderRadius: "12px",
+                        padding: "24px",
+                        boxShadow: "0 4px 6px rgba(79, 195, 247, 0.1)",
+                        overflow: "auto"
+                    }}
+                    className="activity-panel-scrollbar"
+                    >
+                        <h3 style={{ 
+                            margin: "0 0 20px 0", 
+                            color: "#0277bd", 
+                            fontSize: "18px",
+                            fontWeight: "600"
+                        }}>
+                            Activity Overview
+                        </h3>
+
+                        {isLoading ? (
+                            <div style={{ 
+                                display: "flex", 
+                                justifyContent: "center", 
+                                alignItems: "center", 
+                                height: "400px",
+                                color: "#0277bd",
+                                fontSize: "16px"
+                            }}>
+                                Loading analytics...
+                            </div>
+                        ) : (
+                            <ActivityChart 
+                                data={activityData}
+                                timeRange={timeRange}
+                                themeColors={themeColors}
+                            />
+                        )}
+                    </div>
+                </div>
             </ModalContent>
+            
+            {/* Custom Scrollbar and Enhanced Styling */}
+            <style>{`
+                /* Custom scrollbar styling for activity panels */
+                .activity-panel-scrollbar::-webkit-scrollbar,
+                .activity-panel-scrollbar *::-webkit-scrollbar {
+                    width: 14px;
+                    height: 14px;
+                }
+                
+                .activity-panel-scrollbar::-webkit-scrollbar-track,
+                .activity-panel-scrollbar *::-webkit-scrollbar-track {
+                    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+                    border-radius: 8px;
+                    border: 1px solid #4fc3f7;
+                    margin: 2px;
+                }
+                
+                .activity-panel-scrollbar::-webkit-scrollbar-thumb,
+                .activity-panel-scrollbar *::-webkit-scrollbar-thumb {
+                    background: linear-gradient(135deg, #4fc3f7, #0277bd);
+                    border-radius: 8px;
+                    border: 2px solid #e3f2fd;
+                    box-shadow: 0 2px 4px rgba(79, 195, 247, 0.2);
+                }
+                
+                .activity-panel-scrollbar::-webkit-scrollbar-thumb:hover,
+                .activity-panel-scrollbar *::-webkit-scrollbar-thumb:hover {
+                    background: linear-gradient(135deg, #0277bd, #01579b);
+                    box-shadow: 0 4px 8px rgba(79, 195, 247, 0.3);
+                }
+                
+                .activity-panel-scrollbar::-webkit-scrollbar-corner,
+                .activity-panel-scrollbar *::-webkit-scrollbar-corner {
+                    background: #e3f2fd;
+                    border-radius: 8px;
+                }
+                
+                /* Enhanced select styling */
+                .activity-select {
+                    width: 100% !important;
+                    padding: 12px 16px !important;
+                    border: 2px solid #4fc3f7 !important;
+                    border-radius: 8px !important;
+                    font-size: 14px !important;
+                    font-family: inherit !important;
+                    background: rgba(255, 255, 255, 0.95) !important;
+                    color: #0277bd !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: 0 2px 4px rgba(79, 195, 247, 0.1) !important;
+                    cursor: pointer !important;
+                    box-sizing: border-box !important;
+                    font-weight: 500 !important;
+                }
+                
+                .activity-select:focus {
+                    outline: none !important;
+                    border-color: #0277bd !important;
+                    box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.1) !important;
+                    background: rgba(255, 255, 255, 1) !important;
+                }
+                
+                .activity-select:hover {
+                    border-color: #29b6f6 !important;
+                    box-shadow: 0 4px 8px rgba(79, 195, 247, 0.15) !important;
+                }
+                
+                /* Force scrollbar styling on the modal content */
+                [class*="activity-panel-scrollbar"] {
+                    scrollbar-width: thin;
+                    scrollbar-color: #4fc3f7 #e3f2fd;
+                }
+            `}</style>
         </ModalRoot>
     );
 }

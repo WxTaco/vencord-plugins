@@ -5,7 +5,6 @@
  */
 
 import definePlugin from "@utils/types";
-import { Devs } from "@utils/constants";
 import { openModal } from "@utils/modal";
 import { React } from "@webpack/common";
 import { ApplicationCommandInputType } from "@api/Commands";
@@ -14,7 +13,7 @@ import { EmbedTesterModal } from "./components/EmbedTesterModal";
 export default definePlugin({
     name: "EmbedBuilder",
     description: "Embed Builder with visual editor and image generation 🌸",
-    authors: [Devs.Ven],
+    authors: [{ name: "taco.ot", id: 905201724539666503n }],
     dependencies: ["CommandsAPI"],
 
     commands: [
