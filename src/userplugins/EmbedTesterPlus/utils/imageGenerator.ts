@@ -257,6 +257,7 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
 
         // Calculate actual content height from the canvas
         const actualContentHeight = currentY + 20; // Actual content height
+        const actualEmbedHeight = embedHeight; // Store the actual embed height for later use
         const padding = 60;
         const watermarkHeight = 35;
         const finalWidth = Math.max(canvas.width + padding * 2, 700);
@@ -325,7 +326,7 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             const bgX = embedCenterX - bgPadding;
             const bgY = embedCenterY - bgPadding;
             const bgWidth = canvas.width + bgPadding * 2;
-            const bgHeight = actualContentHeight + bgPadding * 2;
+            const bgHeight = actualEmbedHeight + bgPadding * 2; // Use actual embed height, not full content height
             const bgRadius = 16;
 
             // Draw rounded background with shadow
