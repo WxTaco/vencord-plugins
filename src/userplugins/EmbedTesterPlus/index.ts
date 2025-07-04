@@ -233,6 +233,46 @@ export default definePlugin({
                     });
                 }
             }
+        },
+        {
+            name: "embed-debug",
+            description: "Debug DataStore and template loading 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            execute: async (_, ctx) => {
+                try {
+                    console.log("🌸 Starting debug...");
+
+                    // Test DataStore directly
+                    const testResult = await VencordStorage.testDataStore();
+                    console.log("🌸 DataStore test:", testResult);
+
+                    // Test template loading step by step
+                    console.log("🌸 Testing template loading...");
+                    const rawTemplates = await VencordStorage.getCustomTemplates();
+                    console.log("🌸 Raw templates from VencordStorage:", rawTemplates, "Type:", typeof rawTemplates, "IsArray:", Array.isArray(rawTemplates));
+
+                    const allTemplates = await TemplateManager.getAllTemplates();
+                    console.log("🌸 All templates from TemplateManager:", allTemplates.length);
+
+                    const userData = await VencordStorage.getUserData();
+                    console.log("🌸 User data:", userData);
+
+                    sendBotMessage(ctx.channel.id, {
+                        content: `🔍 **Debug Results**\n` +
+                            `DataStore: ${testResult}\n` +
+                            `Raw Templates: ${Array.isArray(rawTemplates) ? rawTemplates.length : 'NOT ARRAY: ' + typeof rawTemplates}\n` +
+                            `All Templates: ${allTemplates.length}\n` +
+                            `Favorites: ${userData.favoriteTemplates.length}\n` +
+                            `Recent: ${userData.recentTemplates.length}\n` +
+                            `Check console for detailed logs`
+                    });
+                } catch (error) {
+                    console.error("🌸 Debug error:", error);
+                    sendBotMessage(ctx.channel.id, {
+                        content: `❌ **Debug Error**\n${error instanceof Error ? error.message : String(error)}\nStack: ${error instanceof Error ? error.stack : 'N/A'}`
+                    });
+                }
+            }
         }
     ],
 

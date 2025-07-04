@@ -91,9 +91,20 @@ export class VencordStorage {
         try {
             console.log("🌸 Loading custom templates from DataStore...");
             const stored = await DataStore.get(STORAGE_KEYS.TEMPLATES);
-            const templates = stored || [];
-            console.log("🌸 Loaded", templates.length, "custom templates");
-            return templates;
+
+            // Ensure we always return an array
+            if (!stored) {
+                console.log("🌸 No templates found, returning empty array");
+                return [];
+            }
+
+            if (!Array.isArray(stored)) {
+                console.warn("🌸 Stored templates is not an array:", typeof stored, stored);
+                return [];
+            }
+
+            console.log("🌸 Loaded", stored.length, "custom templates");
+            return stored;
         } catch (error) {
             console.error("🌸 Failed to load custom templates:", error);
             return [];
@@ -102,6 +113,12 @@ export class VencordStorage {
 
     static async saveCustomTemplates(templates: EmbedTemplate[]): Promise<boolean> {
         try {
+            // Validate input
+            if (!Array.isArray(templates)) {
+                console.error("🌸 Templates must be an array, got:", typeof templates);
+                return false;
+            }
+
             console.log("🌸 Saving", templates.length, "custom templates...");
             await DataStore.set(STORAGE_KEYS.TEMPLATES, templates);
             console.log("🌸 Successfully saved custom templates");
@@ -306,12 +323,27 @@ export class VencordStorage {
     static async getUserData(): Promise<UserData> {
         try {
             const stored = await DataStore.get(STORAGE_KEYS.USER_DATA);
-            return stored || {
+
+            const defaultUserData: UserData = {
                 favoriteTemplates: [],
                 recentTemplates: [],
                 customCategories: [],
                 preferences: {}
             };
+
+            if (!stored) {
+                return defaultUserData;
+            }
+
+            // Ensure arrays are actually arrays
+            const userData: UserData = {
+                favoriteTemplates: Array.isArray(stored.favoriteTemplates) ? stored.favoriteTemplates : [],
+                recentTemplates: Array.isArray(stored.recentTemplates) ? stored.recentTemplates : [],
+                customCategories: Array.isArray(stored.customCategories) ? stored.customCategories : [],
+                preferences: (stored.preferences && typeof stored.preferences === 'object') ? stored.preferences : {}
+            };
+
+            return userData;
         } catch (error) {
             console.error("🌸 Failed to load user data:", error);
             return {
