@@ -2697,25 +2697,76 @@ const UserTrackingModal = () => {
 const PingHistoryModal = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
-    const [pingHistory] = useState([
-        { id: '1', content: '@everyone Check this out!', channel: 'general', timestamp: Date.now() - 3600000 },
-        { id: '2', content: 'Hey @here, important announcement', channel: 'announcements', timestamp: Date.now() - 7200000 },
-        { id: '3', content: '@everyone Meeting in 5 minutes', channel: 'general', timestamp: Date.now() - 86400000 }
-    ]);
+    const [pingHistory, setPingHistory] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
 
     React.useEffect(() => {
         const handleOpenPingHistory = (e: any) => {
             setUser(e.detail.user);
             setIsOpen(true);
+            loadPingHistory(e.detail.user.id);
         };
 
         document.addEventListener('modsuite:open-ping-history', handleOpenPingHistory);
         return () => document.removeEventListener('modsuite:open-ping-history', handleOpenPingHistory);
     }, []);
 
+    const loadPingHistory = async (userId: string) => {
+        setLoading(true);
+        try {
+            // Get ping data from the monitoring system
+            const userAnalytics = getUserAnalytics(userId);
+            if (userAnalytics && userAnalytics.recentPingEvents) {
+                // Process ping events to show detailed information
+                const processedPings = userAnalytics.recentPingEvents.map((ping: any) => {
+                    const channel = ChannelStore.getChannel(ping.channelId);
+                    return {
+                        id: ping.messageId || ping.timestamp,
+                        content: ping.content || 'Message content not available',
+                        channel: channel ? channel.name : `Channel ${ping.channelId}`,
+                        channelId: ping.channelId,
+                        timestamp: ping.timestamp,
+                        type: ping.type,
+                        messageId: ping.messageId
+                    };
+                }).sort((a: any, b: any) => b.timestamp - a.timestamp);
+
+                setPingHistory(processedPings);
+            } else {
+                // Try to get data from the advanced monitoring system
+                const allPingData = messageMonitor.getAllPingData();
+                const userPingData = allPingData.find(data => data.userId === userId);
+
+                if (userPingData && userPingData.pings) {
+                    const processedPings = userPingData.pings.map((ping: any) => {
+                        const channel = ChannelStore.getChannel(ping.channelId);
+                        return {
+                            id: ping.messageId || ping.timestamp,
+                            content: ping.content || 'Message content not available',
+                            channel: channel ? channel.name : `Channel ${ping.channelId}`,
+                            channelId: ping.channelId,
+                            timestamp: ping.timestamp,
+                            type: ping.type,
+                            messageId: ping.messageId
+                        };
+                    }).sort((a: any, b: any) => b.timestamp - a.timestamp);
+
+                    setPingHistory(processedPings);
+                } else {
+                    setPingHistory([]);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load ping history:', error);
+            setPingHistory([]);
+        }
+        setLoading(false);
+    };
+
     const handleClose = () => {
         setIsOpen(false);
         setUser(null);
+        setPingHistory([]);
     };
 
     if (!isOpen || !user) return null;
@@ -2749,42 +2800,118 @@ const PingHistoryModal = () => {
                         {user.username}#{user.discriminator || '0000'}
                     </div>
                     <div style={{ fontSize: '12px', color: '#d97706', marginTop: '2px' }}>
-                        Messages with @everyone, @here, or role pings
+                        {loading ? 'Loading ping history...' : `${pingHistory.length} messages with @everyone, @here, or role pings`}
                     </div>
                 </div>
 
                 <div style={{
-                    maxHeight: '400px',
+                    maxHeight: '450px',
                     overflowY: 'auto',
                     marginBottom: '16px'
                 }}>
-                    {pingHistory.map(ping => (
-                        <div key={ping.id} style={{
-                            padding: '12px',
-                            border: '1px solid #fed7aa',
-                            borderRadius: '6px',
-                            marginBottom: '8px',
-                            background: '#fffbeb'
+                    {loading ? (
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '40px 20px',
+                            color: '#6b7280',
+                            fontSize: '14px'
                         }}>
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '4px'
+                            Loading ping history...
+                        </div>
+                    ) : pingHistory.length > 0 ? (
+                        pingHistory.map(ping => (
+                            <div key={ping.id} style={{
+                                padding: '14px',
+                                border: '1px solid #fed7aa',
+                                borderRadius: '8px',
+                                marginBottom: '10px',
+                                background: '#fffbeb',
+                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
                             }}>
-                                <span style={{ fontWeight: 500, color: '#92400e' }}>
-                                    #{ping.channel}
-                                </span>
-                                <span style={{ fontSize: '12px', color: '#d97706' }}>
-                                    {new Date(ping.timestamp).toLocaleString()}
-                                </span>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '6px'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{
+                                            fontWeight: 600,
+                                            color: '#92400e',
+                                            fontSize: '13px'
+                                        }}>
+                                            #{ping.channel}
+                                        </span>
+                                        {ping.type && (
+                                            <span style={{
+                                                fontSize: '10px',
+                                                background: '#fbbf24',
+                                                color: '#92400e',
+                                                padding: '2px 6px',
+                                                borderRadius: '4px',
+                                                fontWeight: 500
+                                            }}>
+                                                {ping.type}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span style={{ fontSize: '11px', color: '#d97706' }}>
+                                        {new Date(ping.timestamp).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div style={{
+                                    color: '#374151',
+                                    fontSize: '13px',
+                                    lineHeight: '1.4',
+                                    background: '#f9fafb',
+                                    padding: '8px 10px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #e5e7eb'
+                                }}>
+                                    {ping.content}
+                                </div>
+                                {ping.messageId && (
+                                    <div style={{
+                                        fontSize: '10px',
+                                        color: '#9ca3af',
+                                        marginTop: '6px',
+                                        fontFamily: 'monospace'
+                                    }}>
+                                        Message ID: {ping.messageId}
+                                    </div>
+                                )}
                             </div>
-                            <div style={{ color: '#374151', fontSize: '14px' }}>
-                                {ping.content}
+                        ))
+                    ) : (
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '40px 20px',
+                            color: '#9ca3af',
+                            fontSize: '14px'
+                        }}>
+                            <div style={{ marginBottom: '8px' }}>
+                                No ping history found for this user
+                            </div>
+                            <div style={{ fontSize: '12px' }}>
+                                This user hasn't used @everyone, @here, or role pings recently, or ping monitoring may not be enabled
                             </div>
                         </div>
-                    ))}
+                    )}
                 </div>
+
+                {!loading && pingHistory.length > 0 && (
+                    <div style={{
+                        marginBottom: '16px',
+                        padding: '10px',
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: '#166534'
+                    }}>
+                        ✅ Showing real ping history from ModSuite monitoring system
+                    </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button
