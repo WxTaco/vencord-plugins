@@ -36,13 +36,13 @@ export class MessageMonitor {
         if (this.isListening) return;
 
         this.isListening = true;
-        
+
         // Listen for new messages
         FluxDispatcher.subscribe('MESSAGE_CREATE', this.handleMessageCreate);
-        
+
         // Listen for message updates (edits)
         FluxDispatcher.subscribe('MESSAGE_UPDATE', this.handleMessageUpdate);
-        
+
         // Listen for message deletions
         FluxDispatcher.subscribe('MESSAGE_DELETE', this.handleMessageDelete);
         FluxDispatcher.subscribe('MESSAGE_DELETE_BULK', this.handleMessageDeleteBulk);
@@ -52,14 +52,14 @@ export class MessageMonitor {
         if (!this.isListening) return;
 
         this.isListening = false;
-        
+
         FluxDispatcher.unsubscribe('MESSAGE_CREATE', this.handleMessageCreate);
         FluxDispatcher.unsubscribe('MESSAGE_UPDATE', this.handleMessageUpdate);
         FluxDispatcher.unsubscribe('MESSAGE_DELETE', this.handleMessageDelete);
         FluxDispatcher.unsubscribe('MESSAGE_DELETE_BULK', this.handleMessageDeleteBulk);
     }
 
-    private handleMessageCreate = (data: { message: Message }) => {
+    private handleMessageCreate = (data: { message: Message; }) => {
         const { message } = data;
         if (!message || !message.author) return;
 
@@ -84,7 +84,7 @@ export class MessageMonitor {
         // Track pings
         if (settings.store.enablePingMonitor) {
             const pings = detectPingsInMessage(message.content || '', message.mentions || []);
-            
+
             pings.forEach(ping => {
                 this.pingTracker.trackPing(
                     message.author.id,
@@ -99,7 +99,7 @@ export class MessageMonitor {
         }
     };
 
-    private handleMessageUpdate = (data: { message: Message }) => {
+    private handleMessageUpdate = (data: { message: Message; }) => {
         const { message } = data;
         if (!message || !message.author) return;
 
@@ -111,7 +111,7 @@ export class MessageMonitor {
         // Re-track pings in edited message
         if (settings.store.enablePingMonitor) {
             const pings = detectPingsInMessage(message.content || '', message.mentions || []);
-            
+
             pings.forEach(ping => {
                 this.pingTracker.trackPing(
                     message.author.id,
@@ -126,18 +126,18 @@ export class MessageMonitor {
         }
     };
 
-    private handleMessageDelete = (data: { id: string; channelId: string }) => {
+    private handleMessageDelete = (data: { id: string; channelId: string; }) => {
         const { id } = data;
-        
+
         // Mark message as deleted in user tracking
         if (settings.store.enableUserTracking) {
             this.userTracker.markMessageDeleted(id);
         }
     };
 
-    private handleMessageDeleteBulk = (data: { ids: string[]; channelId: string }) => {
+    private handleMessageDeleteBulk = (data: { ids: string[]; channelId: string; }) => {
         const { ids } = data;
-        
+
         // Mark messages as deleted in user tracking
         if (settings.store.enableUserTracking) {
             ids.forEach(id => {
@@ -160,11 +160,29 @@ export class MessageMonitor {
         this.pingTracker.clearPingData(userId);
     }
 
+    // Public methods to access user tracker
+    getAllTrackedUsers() {
+        return this.userTracker.getAllUserData();
+    }
+
+    trackUserMessage(userId: string, username: string, message: any) {
+        return this.userTracker.trackMessage(userId, username, message);
+    }
+
+    getUserMessages(userId: string) {
+        const userData = this.userTracker.getUserData(userId);
+        return userData?.messages || [];
+    }
+
+    getAllPingData() {
+        return this.pingTracker.getAllPingData();
+    }
+
     // Statistics methods
     getStats() {
         const allUsers = this.userTracker.getAllUserData();
         const allPings = this.pingTracker.getAllPingData();
-        
+
         return {
             trackedUsers: allUsers.length,
             totalMessages: allUsers.reduce((sum, user) => sum + user.messageCount, 0),
@@ -188,7 +206,7 @@ export class MessageMonitor {
             // Clear existing data
             this.userTracker.clearUserData();
             this.pingTracker.clearPingData();
-            
+
             // Import user tracking data
             if (data.userTracking && Array.isArray(data.userTracking)) {
                 data.userTracking.forEach((userData: any) => {
@@ -203,7 +221,7 @@ export class MessageMonitor {
                     }
                 });
             }
-            
+
             // Import ping data
             if (data.pingData && Array.isArray(data.pingData)) {
                 data.pingData.forEach((pingData: any) => {
@@ -218,7 +236,7 @@ export class MessageMonitor {
                     }
                 });
             }
-            
+
             return true;
         } catch (error) {
             console.error('Failed to import ModSuite data:', error);
@@ -250,11 +268,11 @@ export function checkMonitoringStatus() {
 export function getUserAnalytics(userId: string) {
     const userTracking = messageMonitor.getTrackedUserData(userId);
     const pingData = messageMonitor.getPingData(userId);
-    
+
     if (!userTracking && !pingData) {
         return null;
     }
-    
+
     return {
         userId,
         username: userTracking?.username || pingData?.username || 'Unknown',
@@ -272,22 +290,22 @@ export function getUserAnalytics(userId: string) {
 // Utility function to get server-wide analytics
 export function getServerAnalytics() {
     const stats = messageMonitor.getStats();
-    const allUsers = messageMonitor.userTracker.getAllUserData();
-    const allPings = messageMonitor.pingTracker.getAllPingData();
-    
+    const allUsers = messageMonitor.getAllTrackedUsers();
+    const allPings = messageMonitor.getAllPingData();
+
     // Calculate additional metrics
-    const activeUsers = allUsers.filter(user => 
+    const activeUsers = allUsers.filter(user =>
         Date.now() - user.lastSeen < 24 * 60 * 60 * 1000 // Active in last 24 hours
     ).length;
-    
+
     const topMessageUsers = allUsers
         .sort((a, b) => b.messageCount - a.messageCount)
         .slice(0, 5);
-    
+
     const topPingUsers = allPings
         .sort((a, b) => b.totalPings - a.totalPings)
         .slice(0, 5);
-    
+
     return {
         ...stats,
         activeUsers,
