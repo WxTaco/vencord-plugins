@@ -11,12 +11,14 @@ import { EmbedEditorGUI } from "./EmbedEditorGUI";
 import { EmbedEditorJSON } from "./EmbedEditorJSON";
 import { TimestampTool } from "./TimestampTool";
 import { defaultEmbed, validateEmbed } from "../utils/embedUtils";
+import { generateEmbedImage, downloadEmbedImage, copyEmbedImageToClipboard } from "../utils/imageGenerator";
 
 export function EmbedTesterModal(props: ModalProps) {
     const [embedData, setEmbedData] = useState(defaultEmbed);
     const [activeTab, setActiveTab] = useState<"gui" | "json" | "timestamp">("gui");
     const [darkMode, setDarkMode] = useState(true);
     const [jsonError, setJsonError] = useState<string | null>(null);
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
     const handleEmbedChange = (newEmbed: any) => {
         const validation = validateEmbed(newEmbed);
@@ -28,102 +30,171 @@ export function EmbedTesterModal(props: ModalProps) {
         }
     };
 
+    const handleGenerateImage = async () => {
+        setIsGeneratingImage(true);
+        try {
+            const imageDataUrl = await generateEmbedImage(embedData, darkMode);
+            downloadEmbedImage(imageDataUrl, `embed-${Date.now()}.png`);
+        } catch (error) {
+            console.error('Failed to generate image:', error);
+        }
+        setIsGeneratingImage(false);
+    };
+
+    const handleCopyImage = async () => {
+        setIsGeneratingImage(true);
+        try {
+            const imageDataUrl = await generateEmbedImage(embedData, darkMode);
+            const success = await copyEmbedImageToClipboard(imageDataUrl);
+            if (success) {
+                // Show success feedback
+                console.log('Image copied to clipboard!');
+            }
+        } catch (error) {
+            console.error('Failed to copy image:', error);
+        }
+        setIsGeneratingImage(false);
+    };
+
     const tabStyle = (isActive: boolean) => ({
-        padding: "8px 16px",
-        background: isActive ? "#5865f2" : "transparent",
-        color: isActive ? "white" : "#4f5660",
-        border: "none",
-        borderRadius: "4px",
+        padding: "10px 18px",
+        background: isActive ? "linear-gradient(135deg, #ec4899, #be185d)" : "transparent",
+        color: isActive ? "white" : "#831843",
+        border: isActive ? "none" : "2px solid #f9a8d4",
+        borderRadius: "8px",
         cursor: "pointer",
         fontSize: "14px",
-        fontWeight: "500",
-        marginRight: "4px"
+        fontWeight: "600",
+        marginRight: "8px",
+        transition: "all 0.2s ease",
+        boxShadow: isActive ? "0 2px 4px rgba(190, 24, 93, 0.3)" : "none"
     });
 
     return (
         <ModalRoot {...props} size={ModalSize.DYNAMIC}>
             <ModalHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                    <h2 style={{ margin: 0, color: "#060607", fontSize: "20px", fontWeight: "600" }}>
-                        Embed Tester+
+                <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    background: "linear-gradient(135deg, #fdf2f8, #fce7f3)",
+                    borderBottom: "2px solid #f9a8d4",
+                    padding: "16px 20px",
+                    borderRadius: "8px 8px 0 0"
+                }}>
+                    <h2 style={{
+                        margin: 0,
+                        color: "#be185d",
+                        fontSize: "22px",
+                        fontWeight: "700",
+                        textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
+                    }}>
+                        🌸 Embed Tester+
                     </h2>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#4f5660" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                        <label style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            fontSize: "14px",
+                            color: "#831843",
+                            fontWeight: "500"
+                        }}>
                             <input
                                 type="checkbox"
                                 checked={darkMode}
                                 onChange={(e) => setDarkMode(e.target.checked)}
+                                style={{
+                                    accentColor: "#ec4899",
+                                    transform: "scale(1.1)"
+                                }}
                             />
-                            Dark Preview
+                            🌙 Dark Preview
                         </label>
-                        <ModalCloseButton />
+                        <ModalCloseButton onClick={props.onClose} />
                     </div>
                 </div>
             </ModalHeader>
-            
-            <ModalContent style={{ padding: "16px", maxHeight: "80vh", overflow: "hidden" }}>
+
+            <ModalContent style={{
+                padding: "20px",
+                maxHeight: "80vh",
+                overflow: "hidden",
+                background: "linear-gradient(135deg, #fefcff, #fdf2f8)"
+            }}>
                 <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                     {/* Tab Navigation */}
-                    <div style={{ marginBottom: "16px", borderBottom: "1px solid #e3e5e8", paddingBottom: "8px" }}>
+                    <div style={{
+                        marginBottom: "20px",
+                        borderBottom: "2px solid #f9a8d4",
+                        paddingBottom: "12px",
+                        background: "rgba(249, 168, 212, 0.1)",
+                        borderRadius: "8px 8px 0 0",
+                        padding: "12px"
+                    }}>
                         <button
                             onClick={() => setActiveTab("gui")}
                             style={tabStyle(activeTab === "gui")}
                         >
-                            Visual Editor
+                            🎨 Visual Editor
                         </button>
                         <button
                             onClick={() => setActiveTab("json")}
                             style={tabStyle(activeTab === "json")}
                         >
-                            JSON Editor
+                            📝 JSON Editor
                         </button>
                         <button
                             onClick={() => setActiveTab("timestamp")}
                             style={tabStyle(activeTab === "timestamp")}
                         >
-                            Timestamp Tool
+                            ⏰ Timestamp Tool
                         </button>
                     </div>
 
                     {/* Error Display */}
                     {jsonError && (
                         <div style={{
-                            padding: "8px 12px",
-                            background: "#fef2f2",
-                            border: "1px solid #fecaca",
-                            borderRadius: "4px",
+                            padding: "12px 16px",
+                            background: "linear-gradient(135deg, #fef2f2, #fee2e2)",
+                            border: "2px solid #fca5a5",
+                            borderRadius: "8px",
                             color: "#dc2626",
-                            fontSize: "12px",
-                            marginBottom: "16px"
+                            fontSize: "13px",
+                            marginBottom: "16px",
+                            fontWeight: "500"
                         }}>
-                            Error: {jsonError}
+                            ❌ Error: {jsonError}
                         </div>
                     )}
 
                     {/* Main Content Area */}
-                    <div style={{ 
-                        display: "flex", 
-                        gap: "16px", 
+                    <div style={{
+                        display: "flex",
+                        gap: "20px",
                         height: "600px",
                         overflow: "hidden"
                     }}>
                         {/* Left Panel - Editor */}
-                        <div style={{ 
-                            flex: "1", 
+                        <div style={{
+                            flex: "1",
                             minWidth: "400px",
                             overflow: "auto",
-                            border: "1px solid #e3e5e8",
-                            borderRadius: "8px",
-                            padding: "16px"
+                            border: "2px solid #f9a8d4",
+                            borderRadius: "12px",
+                            padding: "20px",
+                            background: "rgba(255, 255, 255, 0.8)",
+                            boxShadow: "0 4px 6px rgba(190, 24, 93, 0.1)"
                         }}>
                             {activeTab === "gui" && (
-                                <EmbedEditorGUI 
+                                <EmbedEditorGUI
                                     embedData={embedData}
                                     onChange={handleEmbedChange}
                                 />
                             )}
                             {activeTab === "json" && (
-                                <EmbedEditorJSON 
+                                <EmbedEditorJSON
                                     embedData={embedData}
                                     onChange={handleEmbedChange}
                                     error={jsonError}
@@ -135,23 +206,69 @@ export function EmbedTesterModal(props: ModalProps) {
                         </div>
 
                         {/* Right Panel - Preview */}
-                        <div style={{ 
-                            flex: "1", 
+                        <div style={{
+                            flex: "1",
                             minWidth: "400px",
                             overflow: "auto",
-                            border: "1px solid #e3e5e8",
-                            borderRadius: "8px",
-                            padding: "16px"
+                            border: "2px solid #f9a8d4",
+                            borderRadius: "12px",
+                            padding: "20px",
+                            background: "rgba(255, 255, 255, 0.8)",
+                            boxShadow: "0 4px 6px rgba(190, 24, 93, 0.1)"
                         }}>
-                            <h3 style={{ 
-                                margin: "0 0 16px 0", 
-                                fontSize: "16px", 
-                                fontWeight: "600",
-                                color: "#060607"
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "16px"
                             }}>
-                                Live Preview
-                            </h3>
-                            <EmbedPreview 
+                                <h3 style={{
+                                    margin: 0,
+                                    fontSize: "18px",
+                                    fontWeight: "700",
+                                    color: "#be185d",
+                                    textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
+                                }}>
+                                    ✨ Live Preview
+                                </h3>
+                                <div style={{ display: "flex", gap: "8px" }}>
+                                    <button
+                                        onClick={handleCopyImage}
+                                        disabled={isGeneratingImage}
+                                        style={{
+                                            padding: "6px 12px",
+                                            background: isGeneratingImage ? "#d1d5db" : "linear-gradient(135deg, #f472b6, #ec4899)",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "6px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            cursor: isGeneratingImage ? "not-allowed" : "pointer",
+                                            boxShadow: "0 2px 4px rgba(236, 72, 153, 0.3)"
+                                        }}
+                                    >
+                                        {isGeneratingImage ? "⏳" : "📋"} Copy Image
+                                    </button>
+                                    <button
+                                        onClick={handleGenerateImage}
+                                        disabled={isGeneratingImage}
+                                        style={{
+                                            padding: "6px 12px",
+                                            background: isGeneratingImage ? "#d1d5db" : "linear-gradient(135deg, #ec4899, #be185d)",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "6px",
+                                            fontSize: "11px",
+                                            fontWeight: "600",
+                                            cursor: isGeneratingImage ? "not-allowed" : "pointer",
+                                            boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
+                                        }}
+                                    >
+                                        {isGeneratingImage ? "⏳" : "💾"} Save Image
+                                    </button>
+                                </div>
+                            </div>
+                            <EmbedPreview
                                 embedData={embedData}
                                 darkMode={darkMode}
                             />

@@ -12,49 +12,93 @@ import { EmbedTesterModal } from "./components/EmbedTesterModal";
 
 export default definePlugin({
     name: "EmbedTesterPlus",
-    description: "Full-featured embed preview tool with visual builder and JSON editor",
-    authors: [Devs.Ven], // Replace with your dev info
+    description: "🌸 Beautiful embed builder with pink theme, visual editor, and image generation",
+    authors: [Devs.Ven],
+    dependencies: ["CommandsAPI"],
+
+    commands: [
+        {
+            name: "embed",
+            description: "🌸 Open the beautiful Embed Tester+ builder",
+            execute: () => {
+                openEmbedTester();
+            }
+        },
+        {
+            name: "embed-builder",
+            description: "🌸 Open Embed Tester+ (alias for /embed)",
+            execute: () => {
+                openEmbedTester();
+            }
+        }
+    ],
 
     start() {
-        console.log("EmbedTesterPlus: Plugin started");
+        console.log("EmbedTesterPlus: 🌸 Pink-themed plugin started");
     },
 
     stop() {
         console.log("EmbedTesterPlus: Plugin stopped");
     },
 
-    // Add settings panel button
+    // Add settings panel button with pink theme
     settingsAboutComponent: () => {
         return React.createElement("div", {
             style: {
-                padding: "16px",
-                background: "#f0f0f0",
-                borderRadius: "8px",
-                margin: "8px 0"
+                padding: "20px",
+                background: "linear-gradient(135deg, #fdf2f8, #fce7f3)",
+                border: "2px solid #f9a8d4",
+                borderRadius: "12px",
+                margin: "12px 0"
             }
         }, [
             React.createElement("h3", {
                 key: "title",
-                style: { margin: "0 0 8px 0", color: "#333" }
-            }, "Embed Tester+"),
+                style: {
+                    margin: "0 0 8px 0",
+                    color: "#be185d",
+                    fontSize: "18px",
+                    fontWeight: "600"
+                }
+            }, "🌸 Embed Tester+"),
             React.createElement("p", {
                 key: "desc",
-                style: { margin: "0 0 12px 0", color: "#666", fontSize: "14px" }
-            }, "Create and preview Discord embeds with a visual builder and JSON editor."),
-            React.createElement("button", {
-                key: "btn",
-                onClick: () => openEmbedTester(),
                 style: {
-                    padding: "8px 16px",
-                    background: "#5865f2",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
+                    margin: "0 0 16px 0",
+                    color: "#831843",
                     fontSize: "14px",
-                    fontWeight: "500"
+                    lineHeight: "1.5"
                 }
-            }, "Open Embed Tester")
+            }, "Create beautiful Discord embeds with our pink-themed visual builder, JSON editor, and image generation!"),
+            React.createElement("div", {
+                key: "buttons",
+                style: { display: "flex", gap: "8px", flexWrap: "wrap" }
+            }, [
+                React.createElement("button", {
+                    key: "btn1",
+                    onClick: () => openEmbedTester(),
+                    style: {
+                        padding: "10px 16px",
+                        background: "linear-gradient(135deg, #ec4899, #be185d)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
+                    }
+                }, "🌸 Open Embed Builder"),
+                React.createElement("div", {
+                    key: "info",
+                    style: {
+                        fontSize: "12px",
+                        color: "#9d174d",
+                        marginTop: "4px",
+                        fontStyle: "italic"
+                    }
+                }, "💡 Also available via /embed or /embed-builder commands!")
+            ])
         ]);
     }
 });

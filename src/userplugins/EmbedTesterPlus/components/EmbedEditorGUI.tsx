@@ -63,66 +63,90 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
 
     const inputStyle: React.CSSProperties = {
         width: "100%",
-        padding: "8px",
-        border: "1px solid #e3e5e8",
-        borderRadius: "4px",
+        padding: "10px",
+        border: "2px solid #f9a8d4",
+        borderRadius: "8px",
         fontSize: "14px",
-        fontFamily: "inherit"
+        fontFamily: "inherit",
+        background: "rgba(255, 255, 255, 0.9)",
+        color: "#831843",
+        transition: "all 0.2s ease"
     };
 
     const labelStyle: React.CSSProperties = {
         display: "block",
-        marginBottom: "4px",
-        fontSize: "12px",
+        marginBottom: "6px",
+        fontSize: "13px",
         fontWeight: "600",
-        color: "#4f5660"
+        color: "#be185d"
     };
 
     const sectionStyle: React.CSSProperties = {
-        marginBottom: "16px",
-        padding: "12px",
-        border: "1px solid #e3e5e8",
-        borderRadius: "6px",
-        background: "#f9f9f9"
+        marginBottom: "20px",
+        padding: "16px",
+        border: "2px solid #f9a8d4",
+        borderRadius: "12px",
+        background: "linear-gradient(135deg, #fdf2f8, #fce7f3)",
+        boxShadow: "0 2px 4px rgba(190, 24, 93, 0.1)"
     };
 
     return (
         <div style={{ height: "100%", overflow: "auto" }}>
             {/* Export Buttons */}
-            <div style={{ marginBottom: "16px", display: "flex", gap: "8px" }}>
+            <div style={{
+                marginBottom: "20px",
+                display: "flex",
+                gap: "12px",
+                padding: "12px",
+                background: "rgba(249, 168, 212, 0.1)",
+                borderRadius: "8px",
+                border: "1px solid #f9a8d4"
+            }}>
                 <button
                     onClick={copyJSON}
                     style={{
-                        padding: "6px 12px",
-                        background: "#5865f2",
+                        padding: "8px 16px",
+                        background: "linear-gradient(135deg, #ec4899, #be185d)",
                         color: "white",
                         border: "none",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        cursor: "pointer"
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
                     }}
                 >
-                    Copy JSON
+                    📋 Copy JSON
                 </button>
                 <button
                     onClick={copyMarkdown}
                     style={{
-                        padding: "6px 12px",
-                        background: "#57f287",
+                        padding: "8px 16px",
+                        background: "linear-gradient(135deg, #f472b6, #ec4899)",
                         color: "white",
                         border: "none",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        cursor: "pointer"
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        boxShadow: "0 2px 4px rgba(236, 72, 153, 0.3)"
                     }}
                 >
-                    Copy Markdown
+                    📝 Copy Markdown
                 </button>
             </div>
 
             {/* Basic Fields */}
             <div style={sectionStyle}>
-                <h4 style={{ margin: "0 0 12px 0", color: "#060607" }}>Basic Information</h4>
+                <h4 style={{
+                    margin: "0 0 16px 0",
+                    color: "#be185d",
+                    fontSize: "16px",
+                    fontWeight: "700",
+                    textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
+                }}>
+                    🌸 Basic Information
+                </h4>
 
                 <div style={{ marginBottom: "12px" }}>
                     <label style={labelStyle}>Title ({embedData.title?.length || 0}/256)</label>
