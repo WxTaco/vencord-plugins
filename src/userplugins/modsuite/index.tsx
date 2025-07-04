@@ -1409,9 +1409,277 @@ const ModLogTab = ({ guild }: any) => {
                         }
                     }
 
+                    // Generate detailed description based on action type and changes
+                    const getDetailedDescription = (actionType: number, changes: any[], target: any, entry: any) => {
+                        const baseAction = actionNames[actionType] || `Unknown Action (${actionType})`;
+
+                        if (!changes || changes.length === 0) {
+                            // Handle actions without changes
+                            switch (actionType) {
+                                case 20: return `Kicked ${target.username || target.name} from the server`;
+                                case 22: return `Banned ${target.username || target.name} from the server`;
+                                case 23: return `Unbanned ${target.username || target.name}`;
+                                case 27: return `Disconnected ${target.username || target.name} from voice`;
+                                case 72: return `Deleted a message in ${target.name || 'unknown channel'}`;
+                                case 73: return `Bulk deleted messages in ${target.name || 'unknown channel'}`;
+                                case 74: return `Pinned a message in ${target.name || 'unknown channel'}`;
+                                case 75: return `Unpinned a message in ${target.name || 'unknown channel'}`;
+                                default: return baseAction;
+                            }
+                        }
+
+                        // Handle actions with detailed changes
+                        const details: string[] = [];
+
+                        changes.forEach((change: any) => {
+                            const key = change.key;
+                            const oldValue = change.old_value;
+                            const newValue = change.new_value;
+
+                            switch (key) {
+                                case 'name':
+                                    details.push(`renamed from "${oldValue}" to "${newValue}"`);
+                                    break;
+                                case 'topic':
+                                    details.push(`changed topic from "${oldValue || 'none'}" to "${newValue || 'none'}"`);
+                                    break;
+                                case 'nsfw':
+                                    details.push(`${newValue ? 'enabled' : 'disabled'} NSFW`);
+                                    break;
+                                case 'rate_limit_per_user':
+                                    const oldSeconds = oldValue || 0;
+                                    const newSeconds = newValue || 0;
+                                    if (newSeconds === 0) {
+                                        details.push(`disabled slowmode (was ${oldSeconds}s)`);
+                                    } else if (oldSeconds === 0) {
+                                        details.push(`enabled slowmode (${newSeconds}s)`);
+                                    } else {
+                                        details.push(`changed slowmode from ${oldSeconds}s to ${newSeconds}s`);
+                                    }
+                                    break;
+                                case 'bitrate':
+                                    details.push(`changed bitrate from ${oldValue || 0} to ${newValue || 0}`);
+                                    break;
+                                case 'user_limit':
+                                    const oldLimit = oldValue || 0;
+                                    const newLimit = newValue || 0;
+                                    if (newLimit === 0) {
+                                        details.push(`removed user limit (was ${oldLimit})`);
+                                    } else if (oldLimit === 0) {
+                                        details.push(`set user limit to ${newLimit}`);
+                                    } else {
+                                        details.push(`changed user limit from ${oldLimit} to ${newLimit}`);
+                                    }
+                                    break;
+                                case 'permission_overwrites':
+                                    if (Array.isArray(newValue) && Array.isArray(oldValue)) {
+                                        const added = newValue.filter((perm: any) =>
+                                            !oldValue.some((old: any) => old.id === perm.id)
+                                        );
+                                        const removed = oldValue.filter((perm: any) =>
+                                            !newValue.some((new_: any) => new_.id === perm.id)
+                                        );
+                                        const modified = newValue.filter((perm: any) => {
+                                            const oldPerm = oldValue.find((old: any) => old.id === perm.id);
+                                            return oldPerm && (oldPerm.allow !== perm.allow || oldPerm.deny !== perm.deny);
+                                        });
+
+                                        if (added.length > 0) details.push(`added permissions for ${added.length} role(s)/user(s)`);
+                                        if (removed.length > 0) details.push(`removed permissions for ${removed.length} role(s)/user(s)`);
+                                        if (modified.length > 0) details.push(`modified permissions for ${modified.length} role(s)/user(s)`);
+                                    } else {
+                                        details.push('updated channel permissions');
+                                    }
+                                    break;
+                                case 'nick':
+                                    details.push(`changed nickname from "${oldValue || 'none'}" to "${newValue || 'none'}"`);
+                                    break;
+                                case 'deaf':
+                                    details.push(`${newValue ? 'deafened' : 'undeafened'} user`);
+                                    break;
+                                case 'mute':
+                                    details.push(`${newValue ? 'muted' : 'unmuted'} user`);
+                                    break;
+                                case 'communication_disabled_until':
+                                    if (newValue) {
+                                        const timeoutEnd = new Date(newValue);
+                                        const duration = Math.round((timeoutEnd.getTime() - Date.now()) / (1000 * 60));
+                                        details.push(`timed out until ${timeoutEnd.toLocaleString()} (${duration} minutes)`);
+                                    } else {
+                                        details.push('removed timeout');
+                                    }
+                                    break;
+                                case '$add':
+                                    if (Array.isArray(newValue)) {
+                                        const roleNames = newValue.map((role: any) => role.name || role.id).join(', ');
+                                        details.push(`added role(s): ${roleNames}`);
+                                    }
+                                    break;
+                                case '$remove':
+                                    if (Array.isArray(newValue)) {
+                                        const roleNames = newValue.map((role: any) => role.name || role.id).join(', ');
+                                        details.push(`removed role(s): ${roleNames}`);
+                                    }
+                                    break;
+                                case 'color':
+                                    details.push(`changed color from #${oldValue?.toString(16) || '000000'} to #${newValue?.toString(16) || '000000'}`);
+                                    break;
+                                case 'hoist':
+                                    details.push(`${newValue ? 'enabled' : 'disabled'} role hoisting`);
+                                    break;
+                                case 'mentionable':
+                                    details.push(`made role ${newValue ? 'mentionable' : 'non-mentionable'}`);
+                                    break;
+                                case 'permissions':
+                                    details.push(`updated role permissions`);
+                                    break;
+                                case 'code':
+                                    details.push(`changed invite code from "${oldValue}" to "${newValue}"`);
+                                    break;
+                                case 'channel_id':
+                                    const oldChannel = ChannelStore.getChannel(oldValue);
+                                    const newChannel = ChannelStore.getChannel(newValue);
+                                    details.push(`moved from #${oldChannel?.name || oldValue} to #${newChannel?.name || newValue}`);
+                                    break;
+                                case 'max_uses':
+                                    details.push(`changed max uses from ${oldValue || 'unlimited'} to ${newValue || 'unlimited'}`);
+                                    break;
+                                case 'max_age':
+                                    const oldAge = oldValue === 0 ? 'never' : `${oldValue}s`;
+                                    const newAge = newValue === 0 ? 'never' : `${newValue}s`;
+                                    details.push(`changed expiry from ${oldAge} to ${newAge}`);
+                                    break;
+                                case 'temporary':
+                                    details.push(`${newValue ? 'enabled' : 'disabled'} temporary membership`);
+                                    break;
+                                case 'avatar_hash':
+                                    details.push(newValue ? 'changed avatar' : 'removed avatar');
+                                    break;
+                                case 'banner_hash':
+                                    details.push(newValue ? 'changed banner' : 'removed banner');
+                                    break;
+                                case 'discovery_splash_hash':
+                                    details.push(newValue ? 'changed discovery splash' : 'removed discovery splash');
+                                    break;
+                                case 'icon_hash':
+                                    details.push(newValue ? 'changed server icon' : 'removed server icon');
+                                    break;
+                                case 'splash_hash':
+                                    details.push(newValue ? 'changed invite splash' : 'removed invite splash');
+                                    break;
+                                case 'owner_id':
+                                    const oldOwner = UserStore.getUser(oldValue);
+                                    const newOwner = UserStore.getUser(newValue);
+                                    details.push(`transferred ownership from ${oldOwner?.username || oldValue} to ${newOwner?.username || newValue}`);
+                                    break;
+                                case 'region':
+                                    details.push(`changed voice region from "${oldValue}" to "${newValue}"`);
+                                    break;
+                                case 'afk_channel_id':
+                                    const oldAfkChannel = ChannelStore.getChannel(oldValue);
+                                    const newAfkChannel = ChannelStore.getChannel(newValue);
+                                    if (newValue) {
+                                        details.push(`set AFK channel to #${newAfkChannel?.name || newValue}`);
+                                    } else {
+                                        details.push(`removed AFK channel (was #${oldAfkChannel?.name || oldValue})`);
+                                    }
+                                    break;
+                                case 'afk_timeout':
+                                    details.push(`changed AFK timeout from ${oldValue || 0}s to ${newValue || 0}s`);
+                                    break;
+                                case 'mfa_level':
+                                    const mfaLevels = ['None', '2FA Required'];
+                                    details.push(`changed 2FA requirement from "${mfaLevels[oldValue] || oldValue}" to "${mfaLevels[newValue] || newValue}"`);
+                                    break;
+                                case 'verification_level':
+                                    const verificationLevels = ['None', 'Low', 'Medium', 'High', 'Very High'];
+                                    details.push(`changed verification level from "${verificationLevels[oldValue] || oldValue}" to "${verificationLevels[newValue] || newValue}"`);
+                                    break;
+                                case 'explicit_content_filter':
+                                    const filterLevels = ['Disabled', 'Members without roles', 'All members'];
+                                    details.push(`changed content filter from "${filterLevels[oldValue] || oldValue}" to "${filterLevels[newValue] || newValue}"`);
+                                    break;
+                                case 'default_message_notifications':
+                                    const notificationLevels = ['All messages', 'Only mentions'];
+                                    details.push(`changed default notifications from "${notificationLevels[oldValue] || oldValue}" to "${notificationLevels[newValue] || newValue}"`);
+                                    break;
+                                case 'vanity_url_code':
+                                    details.push(`changed vanity URL from "${oldValue || 'none'}" to "${newValue || 'none'}"`);
+                                    break;
+                                case 'prune_delete_days':
+                                    details.push(`pruned members inactive for ${newValue} days`);
+                                    break;
+                                case 'widget_enabled':
+                                    details.push(`${newValue ? 'enabled' : 'disabled'} server widget`);
+                                    break;
+                                case 'widget_channel_id':
+                                    const widgetChannel = ChannelStore.getChannel(newValue);
+                                    details.push(`set widget channel to #${widgetChannel?.name || newValue}`);
+                                    break;
+                                case 'system_channel_id':
+                                    const systemChannel = ChannelStore.getChannel(newValue);
+                                    if (newValue) {
+                                        details.push(`set system channel to #${systemChannel?.name || newValue}`);
+                                    } else {
+                                        details.push('removed system channel');
+                                    }
+                                    break;
+                                case 'position':
+                                    details.push(`moved from position ${oldValue} to position ${newValue}`);
+                                    break;
+                                case 'type':
+                                    const channelTypes = {
+                                        0: 'Text Channel',
+                                        1: 'DM',
+                                        2: 'Voice Channel',
+                                        3: 'Group DM',
+                                        4: 'Category',
+                                        5: 'News Channel',
+                                        6: 'Store Channel',
+                                        10: 'News Thread',
+                                        11: 'Public Thread',
+                                        12: 'Private Thread',
+                                        13: 'Stage Channel',
+                                        14: 'Directory',
+                                        15: 'Forum Channel'
+                                    };
+                                    details.push(`changed type from ${channelTypes[oldValue as keyof typeof channelTypes] || oldValue} to ${channelTypes[newValue as keyof typeof channelTypes] || newValue}`);
+                                    break;
+                                case 'enable_emoticons':
+                                    details.push(`${newValue ? 'enabled' : 'disabled'} emoticons`);
+                                    break;
+                                case 'expire_behavior':
+                                    const expireBehaviors = ['Remove role', 'Kick'];
+                                    details.push(`changed expire behavior from "${expireBehaviors[oldValue] || oldValue}" to "${expireBehaviors[newValue] || newValue}"`);
+                                    break;
+                                case 'expire_grace_period':
+                                    details.push(`changed grace period from ${oldValue} days to ${newValue} days`);
+                                    break;
+                                default:
+                                    if (typeof newValue === 'boolean') {
+                                        details.push(`${newValue ? 'enabled' : 'disabled'} ${key.replace(/_/g, ' ')}`);
+                                    } else if (oldValue !== undefined && newValue !== undefined) {
+                                        details.push(`changed ${key.replace(/_/g, ' ')} from "${oldValue}" to "${newValue}"`);
+                                    } else if (newValue !== undefined) {
+                                        details.push(`set ${key.replace(/_/g, ' ')} to "${newValue}"`);
+                                    } else {
+                                        details.push(`updated ${key.replace(/_/g, ' ')}`);
+                                    }
+                                    break;
+                            }
+                        });
+
+                        if (details.length === 0) {
+                            return baseAction;
+                        }
+
+                        return `${baseAction}: ${details.join(', ')}`;
+                    };
+
                     return {
                         id: entry.id,
                         action: actionNames[entry.action_type] || `Unknown Action (${entry.action_type})`,
+                        detailedAction: getDetailedDescription(entry.action_type, entry.changes, target, entry),
                         user: resolvedUser?.username || `User ${entry.user_id || 'Unknown'}`,
                         userId: entry.user_id,
                         target: target.username || target.name || 'Unknown Target',
@@ -1500,32 +1768,97 @@ const ModLogTab = ({ guild }: any) => {
                 </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gap: '12px', maxHeight: '500px', overflowY: 'auto' }}>
                 {auditLogs.length > 0 ? auditLogs.map(log => (
                     <div key={log.id} style={{
-                        padding: '12px',
+                        padding: '16px',
                         background: '#f9fafb',
                         border: '1px solid #e5e7eb',
-                        borderRadius: '6px'
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
                     }}>
                         <div style={{
                             display: 'flex',
                             justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '4px'
+                            alignItems: 'flex-start',
+                            marginBottom: '8px'
                         }}>
-                            <span style={{ fontWeight: 500, color: '#374151' }}>{log.action}</span>
-                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                                {log.timestamp.toLocaleString()}
-                            </span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            <strong>{log.user}</strong> → <strong>{log.target}</strong>
+                            <div style={{ flex: 1 }}>
+                                <div style={{
+                                    fontWeight: 600,
+                                    color: '#1f2937',
+                                    fontSize: '14px',
+                                    marginBottom: '4px'
+                                }}>
+                                    {log.action}
+                                </div>
+                                <div style={{
+                                    fontSize: '13px',
+                                    color: '#4b5563',
+                                    lineHeight: '1.4',
+                                    marginBottom: '6px'
+                                }}>
+                                    {log.detailedAction}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                                    <strong style={{ color: '#3b82f6' }}>{log.user}</strong>
+                                    {log.target !== 'Unknown Target' && (
+                                        <span> → <strong style={{ color: '#059669' }}>{log.target}</strong></span>
+                                    )}
+                                </div>
+                            </div>
+                            <div style={{
+                                fontSize: '11px',
+                                color: '#9ca3af',
+                                textAlign: 'right',
+                                minWidth: '120px',
+                                marginLeft: '12px'
+                            }}>
+                                {log.timestamp.toLocaleDateString()}<br />
+                                {log.timestamp.toLocaleTimeString()}
+                            </div>
                         </div>
                         {log.reason && (
-                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                                Reason: {log.reason}
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#7c2d12',
+                                background: '#fef7ed',
+                                border: '1px solid #fed7aa',
+                                borderRadius: '4px',
+                                padding: '6px 8px',
+                                marginTop: '8px'
+                            }}>
+                                <strong>Reason:</strong> {log.reason}
                             </div>
+                        )}
+                        {log.changes && log.changes.length > 0 && (
+                            <details style={{ marginTop: '8px' }}>
+                                <summary style={{
+                                    fontSize: '11px',
+                                    color: '#6b7280',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}>
+                                    View raw changes ({log.changes.length})
+                                </summary>
+                                <div style={{
+                                    marginTop: '6px',
+                                    padding: '8px',
+                                    background: '#f3f4f6',
+                                    borderRadius: '4px',
+                                    fontSize: '10px',
+                                    fontFamily: 'monospace',
+                                    color: '#374151',
+                                    maxHeight: '150px',
+                                    overflowY: 'auto'
+                                }}>
+                                    {log.changes.map((change: any, i: number) => (
+                                        <div key={i} style={{ marginBottom: '4px' }}>
+                                            <strong>{change.key}:</strong> {JSON.stringify(change.old_value)} → {JSON.stringify(change.new_value)}
+                                        </div>
+                                    ))}
+                                </div>
+                            </details>
                         )}
                     </div>
                 )) : !loading && (
@@ -2965,6 +3298,9 @@ export default definePlugin({
 
     start() {
         console.log("ModSuite plugin started");
+
+        // Make MessageTracker globally available
+        (window as any).ModSuiteMessageTracker = MessageTracker;
 
         // Initialize message monitoring
         initializeMessageMonitoring();
