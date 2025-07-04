@@ -7,11 +7,9 @@
 import "./styles.css";
 
 import { NavContextMenuPatchCallback } from "@api/ContextMenu";
-import { classNameFactory } from "@api/Styles";
-import ErrorBoundary from "@components/ErrorBoundary";
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { ChannelStore, Menu, React, SelectedChannelStore, showToast, Toasts, useState } from "@webpack/common";
+import { ChannelStore, Menu, SelectedChannelStore, showToast, Toasts } from "@webpack/common";
 
 // import { FloatingButtonManager } from "./components/FloatingButton";
 // import { ModPanel } from "./components/ModPanel";
@@ -19,101 +17,105 @@ import { settings } from "./settings";
 import { checkMonitoringStatus, initializeMessageMonitoring } from "./utils/messageMonitor";
 import { hasAnyModPermissions } from "./utils/permissions";
 
-const cl = classNameFactory("ms-");
+// Simple DOM-based modal functions
+function createModSuiteModal() {
+    // Remove existing modal if any
+    const existing = document.getElementById('modsuite-modal');
+    if (existing) existing.remove();
 
-// Global state for ModSuite panel
-let modSuitePanelOpen = false;
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.id = 'modsuite-modal';
+    backdrop.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
 
-// Simple ModSuite Panel Component
-const SimpleModSuitePanel = () => {
-    const [isPanelOpen, setIsPanelOpen] = useState(modSuitePanelOpen);
+    // Create modal content
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        width: 400px;
+        height: 300px;
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
 
-    const handleClosePanel = () => {
-        setIsPanelOpen(false);
-        modSuitePanelOpen = false;
+    // Create header
+    const header = document.createElement('div');
+    header.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #eee;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = 'ModSuite';
+    title.style.cssText = 'margin: 0; color: #ec4899;';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #666;
+    `;
+
+    // Create content
+    const content = document.createElement('div');
+    content.style.color = '#333';
+    content.innerHTML = `
+        <p>🎉 ModSuite is working!</p>
+        <p>This is a basic panel. The full features will be added once this is working.</p>
+        <p>Current channel: ${SelectedChannelStore.getChannelId()}</p>
+    `;
+
+    const actionBtn = document.createElement('button');
+    actionBtn.textContent = 'Close';
+    actionBtn.style.cssText = `
+        background-color: #ec4899;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 16px;
+    `;
+
+    // Close handlers
+    const closeModal = () => backdrop.remove();
+    closeBtn.onclick = closeModal;
+    actionBtn.onclick = closeModal;
+    backdrop.onclick = (e) => {
+        if (e.target === backdrop) closeModal();
     };
+    modal.onclick = (e) => e.stopPropagation();
 
-    // Listen for external panel open requests
-    React.useEffect(() => {
-        const handleOpenPanel = () => {
-            setIsPanelOpen(true);
-            modSuitePanelOpen = true;
-        };
+    // Assemble modal
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    content.appendChild(actionBtn);
+    modal.appendChild(header);
+    modal.appendChild(content);
+    backdrop.appendChild(modal);
 
-        document.addEventListener('modsuite:open-panel', handleOpenPanel);
-        return () => document.removeEventListener('modsuite:open-panel', handleOpenPanel);
-    }, []);
-
-    if (!isPanelOpen) return null;
-
-    return (
-        <ErrorBoundary noop>
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                zIndex: 10000,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }} onClick={handleClosePanel}>
-                <div style={{
-                    width: '400px',
-                    height: '300px',
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    padding: '20px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-                }} onClick={(e) => e.stopPropagation()}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '16px',
-                        paddingBottom: '8px',
-                        borderBottom: '1px solid #eee'
-                    }}>
-                        <h2 style={{ margin: 0, color: '#ec4899' }}>ModSuite</h2>
-                        <button
-                            onClick={handleClosePanel}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '18px',
-                                cursor: 'pointer',
-                                color: '#666'
-                            }}
-                        >
-                            ×
-                        </button>
-                    </div>
-                    <div style={{ color: '#333' }}>
-                        <p>🎉 ModSuite is working!</p>
-                        <p>This is a basic panel. The full features will be added once this is working.</p>
-                        <p>Current channel: {SelectedChannelStore.getChannelId()}</p>
-                        <button
-                            onClick={handleClosePanel}
-                            style={{
-                                backgroundColor: '#ec4899',
-                                color: 'white',
-                                border: 'none',
-                                padding: '8px 16px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                marginTop: '16px'
-                            }}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </ErrorBoundary>
-    );
-};
+    // Add to DOM
+    document.body.appendChild(backdrop);
+}
 
 
 
@@ -179,8 +181,7 @@ const channelContextPatch: NavContextMenuPatchCallback = (children, { channel })
                 label="Open ModSuite"
                 icon={() => <span style={{ fontSize: '14px' }}>🛠️</span>}
                 action={() => {
-                    // Trigger panel open event
-                    document.dispatchEvent(new CustomEvent('modsuite:open-panel'));
+                    createModSuiteModal();
                     showToast("Opening ModSuite...", Toasts.Type.MESSAGE);
                 }}
             />
@@ -220,20 +221,7 @@ export default definePlugin({
         checkMonitoringStatus();
     },
 
-    // Patch to inject ModSuite into Discord's app
-    patches: [
-        {
-            find: "Messages.ACTIVITY_PANEL",
-            replacement: {
-                match: /(?<=\i\.createElement\(\i\.Fragment,null,)/,
-                replace: "$self.renderModSuite(),"
-            }
-        }
-    ],
-
-    renderModSuite() {
-        return React.createElement(SimpleModSuitePanel);
-    },
+    // No patches needed - using direct DOM manipulation
 
 
 
