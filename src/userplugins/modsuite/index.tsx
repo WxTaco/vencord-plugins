@@ -17,6 +17,67 @@ import { settings } from "./settings";
 import { checkMonitoringStatus, initializeMessageMonitoring } from "./utils/messageMonitor";
 import { hasAnyModPermissions } from "./utils/permissions";
 
+// Simple DOM-based floating button
+function createFloatingButton() {
+    // Remove existing button if any
+    const existing = document.getElementById('modsuite-floating-btn');
+    if (existing) existing.remove();
+
+    // Check if we should show the button
+    if (!settings.store.showFloatingButton) return;
+
+    // Check if current channel has mod permissions
+    const channelId = SelectedChannelStore.getChannelId();
+    const channel = ChannelStore.getChannel(channelId);
+    if (!channel || !hasAnyModPermissions(channel)) return;
+
+    // Create floating button
+    const button = document.createElement('button');
+    button.id = 'modsuite-floating-btn';
+    button.innerHTML = '🛠️';
+    button.title = 'ModSuite - Click to open mod tools';
+    button.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, #ec4899, #db2777);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+        z-index: 9998;
+        transition: all 0.2s ease;
+    `;
+
+    // Hover effects
+    button.onmouseenter = () => {
+        button.style.transform = 'scale(1.05)';
+        button.style.boxShadow = '0 6px 16px rgba(236, 72, 153, 0.4)';
+    };
+    button.onmouseleave = () => {
+        button.style.transform = 'scale(1)';
+        button.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.3)';
+    };
+
+    // Click handler
+    button.onclick = () => {
+        createModSuiteModal();
+        showToast("Opening ModSuite...", Toasts.Type.MESSAGE);
+    };
+
+    // Add to DOM
+    document.body.appendChild(button);
+}
+
+// Update floating button when channel changes
+function updateFloatingButton() {
+    createFloatingButton();
+}
+
 // Simple DOM-based modal functions
 function createModSuiteModal() {
     // Remove existing modal if any
@@ -126,40 +187,40 @@ const userContextPatch: NavContextMenuPatchCallback = (children, { user, channel
     const currentChannel = channel || ChannelStore.getChannel(SelectedChannelStore.getChannelId());
     if (!currentChannel || !hasAnyModPermissions(currentChannel)) return;
 
-    const group = children.find(child =>
-        Array.isArray(child?.props?.children) &&
-        child.props.children.some((c: any) => c?.props?.id === "user-profile")
+    // Add to the end of the children array
+    children.push(
+        <Menu.MenuSeparator key="ms-separator" />,
+        <Menu.MenuItem
+            key="ms-track-user"
+            id="ms-track-user"
+            label="Track Messages"
+            icon={() => <span style={{ fontSize: '14px' }}>👁️</span>}
+            action={() => {
+                showToast(`Started tracking messages for ${user.username}`, Toasts.Type.SUCCESS);
+                console.log('Track user:', user.id);
+            }}
+        />,
+        <Menu.MenuItem
+            key="ms-view-pings"
+            id="ms-view-pings"
+            label="View Ping History"
+            icon={() => <span style={{ fontSize: '14px' }}>📊</span>}
+            action={() => {
+                showToast(`Viewing ping history for ${user.username}`, Toasts.Type.MESSAGE);
+                console.log('View pings for user:', user.id);
+            }}
+        />,
+        <Menu.MenuItem
+            key="ms-open-modsuite-user"
+            id="ms-open-modsuite-user"
+            label="Open ModSuite"
+            icon={() => <span style={{ fontSize: '14px' }}>🛠️</span>}
+            action={() => {
+                createModSuiteModal();
+                showToast("Opening ModSuite...", Toasts.Type.MESSAGE);
+            }}
+        />
     );
-
-    if (group) {
-        group.props.children.push(
-            <Menu.MenuSeparator key="ms-separator" />,
-            <Menu.MenuItem
-                key="ms-track-user"
-                id="ms-track-user"
-                label="Track Messages"
-                icon={() => <span style={{ fontSize: '14px' }}>👁️</span>}
-                action={() => {
-                    showToast(`Started tracking messages for ${user.username}`, Toasts.Type.SUCCESS);
-                    // In a real implementation, this would start message tracking
-                    console.log('Track user:', user.id);
-                }}
-                disabled={!settings.store.enableUserTracking}
-            />,
-            <Menu.MenuItem
-                key="ms-view-pings"
-                id="ms-view-pings"
-                label="View Ping History"
-                icon={() => <span style={{ fontSize: '14px' }}>📊</span>}
-                action={() => {
-                    showToast(`Viewing ping history for ${user.username}`, Toasts.Type.MESSAGE);
-                    // In a real implementation, this would open ping history
-                    console.log('View pings for user:', user.id);
-                }}
-                disabled={!settings.store.enablePingMonitor}
-            />
-        );
-    }
 };
 
 // Channel context menu patch for quick actions
@@ -210,6 +271,13 @@ export default definePlugin({
         // Initialize message monitoring
         initializeMessageMonitoring();
 
+        // Create floating button
+        createFloatingButton();
+
+        // Listen for channel changes to update floating button
+        this.channelChangeListener = () => updateFloatingButton();
+        SelectedChannelStore.addChangeListener(this.channelChangeListener);
+
         // Show success toast
         showToast("ModSuite plugin loaded successfully!", Toasts.Type.SUCCESS);
     },
@@ -219,6 +287,15 @@ export default definePlugin({
 
         // Stop message monitoring
         checkMonitoringStatus();
+
+        // Remove floating button
+        const button = document.getElementById('modsuite-floating-btn');
+        if (button) button.remove();
+
+        // Remove channel change listener
+        if (this.channelChangeListener) {
+            SelectedChannelStore.removeChangeListener(this.channelChangeListener);
+        }
     },
 
     // No patches needed - using direct DOM manipulation
