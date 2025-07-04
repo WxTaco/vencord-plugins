@@ -6,7 +6,7 @@
 
 import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, ModalSize } from "@utils/modal";
 import { React, useState, useEffect } from "@webpack/common";
-import { GuildStore, ChannelStore } from "@webpack/common";
+import { GuildStore, ChannelStore, GuildChannelStore } from "@webpack/common";
 import { ActivityTracker } from "../utils/activityTracker";
 import { getTimeRanges, formatHour, formatDate } from "../utils/timeUtils";
 import { Heatmap } from "./Heatmap";
@@ -28,8 +28,8 @@ export function GraphPanel({ guildId, activityTracker, ...props }: GraphPanelPro
     const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
     const guild = GuildStore.getGuild(guildId);
-    const channels = guild ? Object.values(ChannelStore.getGuildChannels(guildId)) : [];
-    const textChannels = channels.filter((ch: any) => ch.type === 0); // Text channels only
+    const channels = guild ? GuildChannelStore.getChannels(guildId) : { SELECTABLE: [], VOCAL: [] };
+    const textChannels = channels.SELECTABLE ? channels.SELECTABLE.map((ch: any) => ch.channel).filter((ch: any) => ch.type === 0) : [];
 
     useEffect(() => {
         loadActivityData();
