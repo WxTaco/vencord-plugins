@@ -175,21 +175,21 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             finalCanvas.width = finalWidth;
             finalCanvas.height = finalHeight;
 
-            // Create background with subtle gradient
-            const gradient = finalCtx.createLinearGradient(0, 0, finalWidth, finalHeight - watermarkHeight);
+            // Create background with subtle gradient that covers the full canvas
+            const gradient = finalCtx.createLinearGradient(0, 0, finalWidth, finalHeight);
             gradient.addColorStop(0, theme.background);
             gradient.addColorStop(0.5, theme.backgroundSecondary || theme.background);
             gradient.addColorStop(1, theme.background);
             finalCtx.fillStyle = gradient;
-            finalCtx.fillRect(0, 0, finalWidth, finalHeight - watermarkHeight);
+            finalCtx.fillRect(0, 0, finalWidth, finalHeight);
 
-            // Add subtle texture
+            // Add subtle texture across the full canvas
             for (let i = 0; i < 30; i++) {
                 finalCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.02})`;
                 const size = Math.random() * 2 + 1;
                 finalCtx.fillRect(
                     Math.random() * finalWidth,
-                    Math.random() * (finalHeight - watermarkHeight),
+                    Math.random() * finalHeight,
                     size,
                     size
                 );
