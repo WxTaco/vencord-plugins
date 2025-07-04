@@ -10,12 +10,13 @@ import { EmbedPreview } from "./EmbedPreview";
 import { EmbedEditorGUI } from "./EmbedEditorGUI";
 import { EmbedEditorJSON } from "./EmbedEditorJSON";
 import { TimestampTool } from "./TimestampTool";
+import { TemplateManagerComponent } from "./TemplateManager";
 import { defaultEmbed, validateEmbed } from "../utils/embedUtils";
 import { generateEmbedImage, downloadEmbedImage, copyEmbedImageToClipboard } from "../utils/imageGenerator";
 
 export function EmbedTesterModal(props: ModalProps) {
     const [embedData, setEmbedData] = useState(defaultEmbed);
-    const [activeTab, setActiveTab] = useState<"gui" | "json" | "timestamp">("gui");
+    const [activeTab, setActiveTab] = useState<"gui" | "json" | "timestamp" | "templates">("gui");
     const [darkMode, setDarkMode] = useState(true);
     const [jsonError, setJsonError] = useState<string | null>(null);
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -155,6 +156,12 @@ export function EmbedTesterModal(props: ModalProps) {
                         >
                             Timestamp Tool
                         </button>
+                        <button
+                            onClick={() => setActiveTab("templates")}
+                            style={tabStyle(activeTab === "templates")}
+                        >
+                            Templates
+                        </button>
                     </div>
 
                     {/* Error Display */}
@@ -208,6 +215,13 @@ export function EmbedTesterModal(props: ModalProps) {
                             )}
                             {activeTab === "timestamp" && (
                                 <TimestampTool />
+                            )}
+
+                            {activeTab === "templates" && (
+                                <TemplateManagerComponent
+                                    onSelectTemplate={setEmbedData}
+                                    currentEmbedData={embedData}
+                                />
                             )}
                         </div>
 
