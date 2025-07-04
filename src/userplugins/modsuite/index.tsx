@@ -2919,26 +2919,31 @@ export default definePlugin({
         }
     },
 
-    // Patch to inject ModSuite into Discord's UI
+    // Patch to inject ModSuite into Discord's UI using a more reliable target
     patches: [
         {
-            find: "Messages.ACTIVITY_PANEL",
+            find: "toolbar:function",
             replacement: {
-                match: /(?<=\i\.createElement\(\i\.Fragment,null,)/,
-                replace: "$self.renderModSuite(),"
+                match: /(?<=toolbar:function.{0,100}\()\i.Fragment,/,
+                replace: "$self.ModSuiteWrapper,"
             }
         }
     ],
 
-    renderModSuite() {
-        return React.createElement(React.Fragment, null,
-            React.createElement(ModSuitePanel),
-            React.createElement(ModerationModal),
-            React.createElement(UserTrackingModal),
-            React.createElement(PingHistoryModal),
-            React.createElement(MessageSelectorModal)
+    ModSuiteWrapper: ErrorBoundary.wrap(({ children }: { children: any[]; }) => {
+        // Add ModSuite components to the children array
+        children.push(
+            React.createElement(ErrorBoundary, { noop: true, key: "modsuite-components" },
+                React.createElement(ModSuitePanel),
+                React.createElement(ModerationModal),
+                React.createElement(UserTrackingModal),
+                React.createElement(PingHistoryModal),
+                React.createElement(MessageSelectorModal)
+            )
         );
-    },
+
+        return React.createElement(React.Fragment, null, children);
+    }, { noop: true }),
 
 
 
