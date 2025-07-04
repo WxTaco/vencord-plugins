@@ -395,9 +395,9 @@ export function TemplateManagerComponent({
                         No templates found
                     </div>
                 ) : (
-                    <>
+                    <div>
                         {filteredTemplates.length > 0 && (
-                            <>
+                            <div>
                                 {botIntegrationEnabled && showBotTemplates && filteredBotTemplates.length > 0 && (
                                     <div style={{
                                         padding: "12px",
@@ -482,156 +482,159 @@ export function TemplateManagerComponent({
                                             )}
                                         </div>
                                     </div>
-                                ))
-                )}
-                            </div>
-
-                        {/* Save Template Dialog */}
-                        {showSaveDialog && (
-                            <div style={{
-                                position: "fixed",
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: "rgba(0, 0, 0, 0.5)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                zIndex: 1000
-                            }}>
-                                <div style={{
-                                    background: "white",
-                                    padding: "24px",
-                                    borderRadius: "12px",
-                                    border: "2px solid #f9a8d4",
-                                    minWidth: "400px",
-                                    boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)"
-                                }}>
-                                    <h4 style={{
-                                        margin: "0 0 16px 0",
-                                        color: "#be185d",
-                                        fontSize: "16px",
-                                        fontWeight: "600"
-                                    }}>
-                                        Save Template
-                                    </h4>
-
-                                    <div style={{ marginBottom: "12px" }}>
-                                        <label style={{
-                                            display: "block",
-                                            marginBottom: "4px",
-                                            color: "#831843",
-                                            fontSize: "12px",
-                                            fontWeight: "500"
-                                        }}>
-                                            Template Name *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={saveTemplateName}
-                                            onChange={(e) => setSaveTemplateName(e.target.value)}
-                                            placeholder="Enter template name..."
-                                            className="embed-text-input"
-                                            autoFocus
-                                        />
-                                    </div>
-
-                                    <div style={{ marginBottom: "12px" }}>
-                                        <label style={{
-                                            display: "block",
-                                            marginBottom: "4px",
-                                            color: "#831843",
-                                            fontSize: "12px",
-                                            fontWeight: "500"
-                                        }}>
-                                            Description
-                                        </label>
-                                        <textarea
-                                            value={saveTemplateDescription}
-                                            onChange={(e) => setSaveTemplateDescription(e.target.value)}
-                                            placeholder="Enter template description..."
-                                            className="embed-textarea"
-                                            style={{ height: "60px" }}
-                                        />
-                                    </div>
-
-                                    <div style={{ marginBottom: "20px" }}>
-                                        <label style={{
-                                            display: "block",
-                                            marginBottom: "4px",
-                                            color: "#831843",
-                                            fontSize: "12px",
-                                            fontWeight: "500"
-                                        }}>
-                                            Category
-                                        </label>
-                                        <select
-                                            value={saveTemplateCategory}
-                                            onChange={(e) => setSaveTemplateCategory(e.target.value)}
-                                            className="embed-select"
-                                        >
-                                            {categories.map(category => (
-                                                <option key={category} value={category}>{category}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                                        <button
-                                            onClick={() => setShowSaveDialog(false)}
-                                            style={{
-                                                padding: "8px 16px",
-                                                background: "#e5e7eb",
-                                                color: "#374151",
-                                                border: "none",
-                                                borderRadius: "6px",
-                                                fontSize: "12px",
-                                                fontWeight: "600",
-                                                cursor: "pointer"
-                                            }}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleSaveTemplate}
-                                            style={{
-                                                padding: "8px 16px",
-                                                background: "linear-gradient(135deg, #ec4899, #be185d)",
-                                                color: "white",
-                                                border: "none",
-                                                borderRadius: "6px",
-                                                fontSize: "12px",
-                                                fontWeight: "600",
-                                                cursor: "pointer",
-                                                boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
-                                            }}
-                                        >
-                                            Save Locally
-                                        </button>
-                                        {botIntegrationEnabled && onSaveTemplate && (
-                                            <button
-                                                onClick={handleSaveToBotAPI}
-                                                disabled={isSaving}
-                                                style={{
-                                                    padding: "8px 16px",
-                                                    background: isSaving ? "#9ca3af" : "linear-gradient(135deg, #10b981, #059669)",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "6px",
-                                                    fontSize: "12px",
-                                                    fontWeight: "600",
-                                                    cursor: isSaving ? "not-allowed" : "pointer",
-                                                    boxShadow: "0 2px 4px rgba(16, 185, 129, 0.3)"
-                                                }}
-                                            >
-                                                {isSaving ? "Saving..." : "Save to Bot"}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         )}
                     </div>
-                );
+                )}
+            </div>
+
+            {/* Save Template Dialog */}
+            {showSaveDialog && (
+                <div style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: "rgba(0, 0, 0, 0.5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: "white",
+                        padding: "24px",
+                        borderRadius: "12px",
+                        border: "2px solid #f9a8d4",
+                        minWidth: "400px",
+                        boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)"
+                    }}>
+                        <h4 style={{
+                            margin: "0 0 16px 0",
+                            color: "#be185d",
+                            fontSize: "16px",
+                            fontWeight: "600"
+                        }}>
+                            Save Template
+                        </h4>
+
+                        <div style={{ marginBottom: "12px" }}>
+                            <label style={{
+                                display: "block",
+                                marginBottom: "4px",
+                                color: "#831843",
+                                fontSize: "12px",
+                                fontWeight: "500"
+                            }}>
+                                Template Name *
+                            </label>
+                            <input
+                                type="text"
+                                value={saveTemplateName}
+                                onChange={(e) => setSaveTemplateName(e.target.value)}
+                                placeholder="Enter template name..."
+                                className="embed-text-input"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: "12px" }}>
+                            <label style={{
+                                display: "block",
+                                marginBottom: "4px",
+                                color: "#831843",
+                                fontSize: "12px",
+                                fontWeight: "500"
+                            }}>
+                                Description
+                            </label>
+                            <textarea
+                                value={saveTemplateDescription}
+                                onChange={(e) => setSaveTemplateDescription(e.target.value)}
+                                placeholder="Enter template description..."
+                                className="embed-textarea"
+                                style={{ height: "60px" }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: "20px" }}>
+                            <label style={{
+                                display: "block",
+                                marginBottom: "4px",
+                                color: "#831843",
+                                fontSize: "12px",
+                                fontWeight: "500"
+                            }}>
+                                Category
+                            </label>
+                            <select
+                                value={saveTemplateCategory}
+                                onChange={(e) => setSaveTemplateCategory(e.target.value)}
+                                className="embed-select"
+                            >
+                                {categories.map(category => (
+                                    <option key={category} value={category}>{category}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button
+                                onClick={() => setShowSaveDialog(false)}
+                                style={{
+                                    padding: "8px 16px",
+                                    background: "#e5e7eb",
+                                    color: "#374151",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    fontWeight: "600",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveTemplate}
+                                style={{
+                                    padding: "8px 16px",
+                                    background: "linear-gradient(135deg, #ec4899, #be185d)",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    fontWeight: "600",
+                                    cursor: "pointer",
+                                    boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
+                                }}
+                            >
+                                Save Locally
+                            </button>
+                            {botIntegrationEnabled && onSaveTemplate && (
+                                <button
+                                    onClick={handleSaveToBotAPI}
+                                    disabled={isSaving}
+                                    style={{
+                                        padding: "8px 16px",
+                                        background: isSaving ? "#9ca3af" : "linear-gradient(135deg, #10b981, #059669)",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        fontSize: "12px",
+                                        fontWeight: "600",
+                                        cursor: isSaving ? "not-allowed" : "pointer",
+                                        boxShadow: "0 2px 4px rgba(16, 185, 129, 0.3)"
+                                    }}
+                                >
+                                    {isSaving ? "Saving..." : "Save to Bot"}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
