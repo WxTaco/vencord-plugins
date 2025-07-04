@@ -251,25 +251,36 @@ const MessageTracker = {
 
     getTrackedUsers() {
         const allUsers = messageMonitor.getAllTrackedUsers();
-        return allUsers.map(userData => ({
-            id: userData.userId,
-            username: userData.username,
-            messageCount: userData.messageCount,
-            lastMessage: userData.lastSeen
-        }));
+        // Filter out system/init messages and only return users with real messages
+        return allUsers
+            .filter(userData => userData.messageCount > 0 && userData.userId !== 'system')
+            .map(userData => ({
+                id: userData.userId,
+                username: userData.username,
+                messageCount: userData.messageCount,
+                lastMessage: userData.lastSeen
+            }));
     },
 
     startTracking(userId: string) {
-        // Enable tracking for this user by adding them to the tracker
-        const user = UserStore.getUser(userId);
-        if (user) {
-            messageMonitor.trackUserMessage(userId, user.username, {
-                id: 'init',
-                channelId: 'init',
-                content: '[Tracking started]',
-                edited: false,
-                deleted: false
-            });
+        // Check if already tracking to avoid duplicates
+        const existingUsers = messageMonitor.getAllTrackedUsers();
+        const isAlreadyTracked = existingUsers.some(userData => userData.userId === userId);
+
+        if (!isAlreadyTracked) {
+            const user = UserStore.getUser(userId);
+            if (user) {
+                messageMonitor.trackUserMessage(userId, user.username, {
+                    id: 'init-' + Date.now(),
+                    channelId: 'system',
+                    content: '[Tracking started]',
+                    edited: false,
+                    deleted: false
+                });
+                console.log(`ModSuite: Started tracking user ${user.username} (${userId})`);
+            }
+        } else {
+            console.log(`ModSuite: User ${userId} is already being tracked`);
         }
     },
 
@@ -1270,22 +1281,187 @@ const UserTrackingTab = ({ selectedUser }: any) => {
 };
 
 const ModLogTab = ({ guild }: any) => {
-    const [auditLogs] = useState([
-        { id: '1', action: 'Message Deleted', user: 'Moderator1', target: 'User1', time: '2 minutes ago' },
-        { id: '2', action: 'User Kicked', user: 'Moderator2', target: 'User2', time: '15 minutes ago' },
-        { id: '3', action: 'Channel Created', user: 'Admin1', target: '#new-channel', time: '1 hour ago' }
-    ]);
+    const [auditLogs, setAuditLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadAuditLogs = async () => {
+        if (!guild) {
+            setError('No guild selected');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Fetch audit logs from Discord API
+            const response = await RestAPI.get({
+                url: Constants.Endpoints.GUILD_AUDIT_LOG(guild.id),
+                query: { limit: 50 }
+            });
+
+            if (response.ok) {
+                const auditLogEntries = response.body.audit_log_entries || [];
+                const users = response.body.users || [];
+
+                // Create a user lookup map
+                const userMap = new Map();
+                users.forEach((user: any) => userMap.set(user.id, user));
+
+                // Process audit log entries
+                const processedLogs = auditLogEntries.map((entry: any) => {
+                    const user = userMap.get(entry.user_id);
+                    const target = userMap.get(entry.target_id) || { username: 'Unknown', id: entry.target_id };
+
+                    // Map action types to readable names
+                    const actionNames: { [key: number]: string; } = {
+                        1: 'Guild Updated',
+                        10: 'Channel Created',
+                        11: 'Channel Updated',
+                        12: 'Channel Deleted',
+                        20: 'User Kicked',
+                        22: 'User Banned',
+                        23: 'User Unbanned',
+                        24: 'User Updated',
+                        25: 'User Role Updated',
+                        26: 'User Moved',
+                        27: 'User Disconnected',
+                        28: 'Bot Added',
+                        30: 'Role Created',
+                        31: 'Role Updated',
+                        32: 'Role Deleted',
+                        40: 'Invite Created',
+                        41: 'Invite Updated',
+                        42: 'Invite Deleted',
+                        50: 'Webhook Created',
+                        51: 'Webhook Updated',
+                        52: 'Webhook Deleted',
+                        60: 'Emoji Created',
+                        61: 'Emoji Updated',
+                        62: 'Emoji Deleted',
+                        72: 'Message Deleted',
+                        73: 'Messages Bulk Deleted',
+                        74: 'Message Pinned',
+                        75: 'Message Unpinned',
+                        80: 'Integration Created',
+                        81: 'Integration Updated',
+                        82: 'Integration Deleted',
+                        83: 'Stage Instance Created',
+                        84: 'Stage Instance Updated',
+                        85: 'Stage Instance Deleted',
+                        90: 'Sticker Created',
+                        91: 'Sticker Updated',
+                        92: 'Sticker Deleted',
+                        100: 'Thread Created',
+                        101: 'Thread Updated',
+                        102: 'Thread Deleted',
+                        110: 'Application Command Permission Updated',
+                        121: 'Auto Moderation Rule Created',
+                        122: 'Auto Moderation Rule Updated',
+                        123: 'Auto Moderation Rule Deleted',
+                        124: 'Auto Moderation Block Message',
+                        125: 'Auto Moderation Flag Message',
+                        126: 'Auto Moderation Timeout User'
+                    };
+
+                    return {
+                        id: entry.id,
+                        action: actionNames[entry.action_type] || `Unknown Action (${entry.action_type})`,
+                        user: user?.username || 'Unknown User',
+                        userId: entry.user_id,
+                        target: target.username || target.name || 'Unknown Target',
+                        targetId: entry.target_id,
+                        timestamp: entry.id ? new Date(parseInt(entry.id) / 4194304 + 1420070400000) : new Date(),
+                        reason: entry.reason || null,
+                        changes: entry.changes || []
+                    };
+                }).sort((a: any, b: any) => b.timestamp.getTime() - a.timestamp.getTime());
+
+                setAuditLogs(processedLogs);
+            } else {
+                setError('Failed to fetch audit logs');
+            }
+        } catch (err: any) {
+            console.error('Failed to load audit logs:', err);
+            setError(err.message || 'Failed to load audit logs');
+        }
+
+        setLoading(false);
+    };
+
+    React.useEffect(() => {
+        if (guild) {
+            loadAuditLogs();
+        }
+    }, [guild]);
 
     return (
         <div>
-            <h3 style={{ margin: '0 0 16px 0', color: '#be185d' }}>Enhanced Audit Log</h3>
+            <div style={{
+                marginBottom: '24px',
+                paddingBottom: '16px',
+                borderBottom: '1px solid #e5e7eb'
+            }}>
+                <h3 style={{
+                    margin: '0 0 8px 0',
+                    color: '#1f2937',
+                    fontSize: '18px',
+                    fontWeight: 600
+                }}>
+                    Server Audit Log
+                </h3>
+                <p style={{
+                    margin: 0,
+                    color: '#6b7280',
+                    fontSize: '14px'
+                }}>
+                    Recent moderation actions and server changes
+                </p>
+            </div>
 
-            <div style={{ display: 'grid', gap: '8px' }}>
-                {auditLogs.map(log => (
+            {error && (
+                <div style={{
+                    padding: '12px',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '6px',
+                    marginBottom: '16px',
+                    color: '#dc2626',
+                    fontSize: '14px'
+                }}>
+                    Error: {error}
+                </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    {loading ? 'Loading...' : `${auditLogs.length} entries`}
+                </div>
+                <button
+                    onClick={loadAuditLogs}
+                    disabled={loading || !guild}
+                    style={{
+                        padding: '6px 12px',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.6 : 1
+                    }}
+                >
+                    {loading ? 'Loading...' : 'Refresh'}
+                </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+                {auditLogs.length > 0 ? auditLogs.map(log => (
                     <div key={log.id} style={{
                         padding: '12px',
-                        background: '#fdf2f8',
-                        border: '1px solid #fbcfe8',
+                        background: '#f9fafb',
+                        border: '1px solid #e5e7eb',
                         borderRadius: '6px'
                     }}>
                         <div style={{
@@ -1294,14 +1470,30 @@ const ModLogTab = ({ guild }: any) => {
                             alignItems: 'center',
                             marginBottom: '4px'
                         }}>
-                            <span style={{ fontWeight: 500, color: '#be185d' }}>{log.action}</span>
-                            <span style={{ fontSize: '12px', color: '#9d174d' }}>{log.time}</span>
+                            <span style={{ fontWeight: 500, color: '#374151' }}>{log.action}</span>
+                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                {log.timestamp.toLocaleString()}
+                            </span>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9d174d' }}>
-                            {log.user} → {log.target}
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            <strong>{log.user}</strong> → <strong>{log.target}</strong>
                         </div>
+                        {log.reason && (
+                            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                                Reason: {log.reason}
+                            </div>
+                        )}
                     </div>
-                ))}
+                )) : !loading && (
+                    <div style={{
+                        padding: '40px 20px',
+                        textAlign: 'center',
+                        color: '#9ca3af',
+                        fontSize: '14px'
+                    }}>
+                        {error ? 'Failed to load audit logs' : 'No audit log entries found'}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1827,16 +2019,20 @@ const ModerationModal = () => {
                     </div>
                 );
             case 'slowmode':
+                const currentSlowmode = modalData.channel?.rateLimitPerUser || 0;
                 return (
                     <div>
-                        <h3 style={{ margin: '0 0 16px 0', color: '#3b82f6' }}>Set Slowmode</h3>
+                        <h3 style={{ margin: '0 0 16px 0', color: '#3b82f6' }}>Manage Slowmode</h3>
                         <div style={{ marginBottom: '16px', padding: '12px', background: '#eff6ff', borderRadius: '6px' }}>
-                            <strong>Channel:</strong> #{modalData.channel?.name || 'Unknown'}
+                            <div><strong>Channel:</strong> #{modalData.channel?.name || 'Unknown'}</div>
+                            <div style={{ marginTop: '4px', fontSize: '12px', color: '#3b82f6' }}>
+                                Current slowmode: {currentSlowmode === 0 ? 'Disabled' : `${currentSlowmode} seconds`}
+                            </div>
                         </div>
                         <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>Slowmode Duration</label>
+                            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>New Slowmode Duration</label>
                             <select
-                                value={formData.duration || '0'}
+                                value={formData.duration !== undefined ? formData.duration : currentSlowmode.toString()}
                                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                                 style={{
                                     width: '100%',
@@ -1861,6 +2057,19 @@ const ModerationModal = () => {
                                 <option value="21600">6 hours</option>
                             </select>
                         </div>
+                        {currentSlowmode > 0 && (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: '#fef3c7',
+                                border: '1px solid #fbbf24',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                color: '#92400e',
+                                marginBottom: '12px'
+                            }}>
+                                💡 Tip: Select "Disabled" to remove the current slowmode
+                            </div>
+                        )}
                     </div>
                 );
             default:
@@ -2625,183 +2834,7 @@ function createModSuiteModal(user?: any) {
     document.dispatchEvent(event);
 }
 
-// DOM-based modal as fallback (unused - keeping for reference)
-function createDOMBasedModal(user?: any) {
-    // Remove existing modal
-    const existing = document.getElementById('modsuite-dom-modal');
-    if (existing) existing.remove();
-
-    // Create backdrop
-    const backdrop = document.createElement('div');
-    backdrop.id = 'modsuite-dom-modal';
-    backdrop.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-
-    // Create modal
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        width: 600px;
-        max-height: 700px;
-        background-color: white;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        border: 2px solid #fbcfe8;
-    `;
-
-    // Create header
-    const header = document.createElement('div');
-    header.style.cssText = `
-        background: linear-gradient(135deg, #ec4899, #db2777);
-        color: white;
-        padding: 16px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    `;
-
-    const titleDiv = document.createElement('div');
-    const title = document.createElement('div');
-    title.textContent = `ModSuite - ${SelectedChannelStore.getChannelId()}`;
-    title.style.cssText = 'font-weight: 600; font-size: 16px;';
-
-    const subtitle = document.createElement('div');
-    subtitle.textContent = 'Comprehensive Moderation Toolkit';
-    subtitle.style.cssText = 'font-size: 12px; opacity: 0.8;';
-
-    titleDiv.appendChild(title);
-    titleDiv.appendChild(subtitle);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '×';
-    closeBtn.style.cssText = `
-        background: none;
-        border: none;
-        color: white;
-        cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
-        font-size: 18px;
-    `;
-
-    // Create content
-    const content = document.createElement('div');
-    content.style.cssText = 'padding: 20px;';
-
-    if (user) {
-        content.innerHTML = `
-            <div style="padding: 12px; background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; margin-bottom: 16px;">
-                <div style="font-size: 14px; font-weight: 500; color: #be185d;">Selected User: ${user.username}</div>
-                <div style="font-size: 12px; color: #9d174d; margin-top: 4px;">ID: ${user.id}</div>
-            </div>
-        `;
-    }
-
-    content.innerHTML += `
-        <h3 style="margin: 0 0 16px 0; color: #be185d;">🎉 ModSuite is Working!</h3>
-        <p style="color: #333; margin-bottom: 12px;">This is the DOM fallback version. All features are functional:</p>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
-            <button class="ms-action-btn" data-action="kick">👢 Kick User</button>
-            <button class="ms-action-btn" data-action="ban">🔨 Ban User</button>
-            <button class="ms-action-btn" data-action="timeout">⏰ Timeout User</button>
-            <button class="ms-action-btn" data-action="delete">🗑️ Delete Messages</button>
-        </div>
-        <div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 12px; color: #166534;">
-            ✅ ModSuite is fully functional! React rendering will be improved in future updates.
-        </div>
-    `;
-
-    // Add action button styles
-    const style = document.createElement('style');
-    style.textContent = `
-        .ms-action-btn {
-            background: #fdf2f8;
-            border: 2px solid #fbcfe8;
-            border-radius: 8px;
-            padding: 12px 8px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            color: #be185d;
-            transition: all 0.2s ease;
-        }
-        .ms-action-btn:hover {
-            background: #fbcfe8;
-            transform: translateY(-2px);
-        }
-        .ms-action-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-    `;
-    document.head.appendChild(style);
-
-    // Close handlers
-    const closeModal = () => {
-        backdrop.remove();
-        style.remove();
-    };
-
-    closeBtn.onclick = closeModal;
-    backdrop.onclick = (e) => {
-        if (e.target === backdrop) closeModal();
-    };
-    modal.onclick = (e) => e.stopPropagation();
-
-    // Action handlers
-    content.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('ms-action-btn')) {
-            const action = target.getAttribute('data-action');
-            switch (action) {
-                case 'kick':
-                    if (user) {
-                        showToast(`Kicked ${user.username}`, Toasts.Type.SUCCESS);
-                    } else {
-                        showToast('Select a user first', Toasts.Type.MESSAGE);
-                    }
-                    break;
-                case 'ban':
-                    if (user) {
-                        showToast(`Banned ${user.username}`, Toasts.Type.SUCCESS);
-                    } else {
-                        showToast('Select a user first', Toasts.Type.MESSAGE);
-                    }
-                    break;
-                case 'timeout':
-                    if (user) {
-                        showToast(`Timed out ${user.username}`, Toasts.Type.SUCCESS);
-                    } else {
-                        showToast('Select a user first', Toasts.Type.MESSAGE);
-                    }
-                    break;
-                case 'delete':
-                    showToast('Message deletion feature activated', Toasts.Type.MESSAGE);
-                    break;
-            }
-        }
-    });
-
-    // Assemble modal
-    header.appendChild(titleDiv);
-    header.appendChild(closeBtn);
-    modal.appendChild(header);
-    modal.appendChild(content);
-    backdrop.appendChild(modal);
-
-    // Add to DOM
-    document.body.appendChild(backdrop);
-}
+// DOM fallback removed - using React components only
 
 
 
