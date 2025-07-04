@@ -2616,119 +2616,16 @@ const MessageSelectorModal = () => {
     );
 };
 
-// Global React component instance
-let modSuiteReactRoot: any = null;
-
-// Function to render React component using Vencord's approach
-function renderModSuiteComponent() {
-    if (modSuiteReactRoot) return;
-
-    // Create container
-    const container = document.createElement('div');
-    container.id = 'modsuite-react-root';
-    document.body.appendChild(container);
-
-    // Use Vencord's React rendering approach
-    try {
-        // Import ReactDOM from webpack/common
-        const { ReactDOM } = require('@webpack/common');
-
-        if (ReactDOM && ReactDOM.render) {
-            // Create a wrapper component that includes all components
-            const AppWrapper = () => React.createElement(React.Fragment, null,
-                React.createElement(ModSuitePanel),
-                React.createElement(ModerationModal),
-                React.createElement(UserTrackingModal),
-                React.createElement(PingHistoryModal),
-                React.createElement(MessageSelectorModal)
-            );
-
-            // Use Vencord's ReactDOM
-            ReactDOM.render(React.createElement(AppWrapper), container);
-            modSuiteReactRoot = {
-                container,
-                unmount: () => {
-                    try {
-                        ReactDOM.unmountComponentAtNode(container);
-                    } catch (e) {
-                        container.remove();
-                    }
-                }
-            };
-            console.log('ModSuite: React component rendered successfully');
-        } else {
-            throw new Error('ReactDOM not available from @webpack/common');
-        }
-    } catch (error) {
-        console.error('ModSuite: Failed to render React component:', error);
-
-        // Try alternative approach - use a simple React element without ReactDOM
-        try {
-            // Create a simple React component that renders itself
-            const element = React.createElement(ModSuitePanel);
-
-            // Try to manually append the React element
-            if (element && typeof element === 'object') {
-                // This won't work directly, so let's use a different approach
-                throw new Error('Need proper ReactDOM');
-            }
-        } catch (e2) {
-            console.error('ModSuite: Alternative rendering also failed:', e2);
-
-            // Final fallback - create a working DOM-based modal
-            container.innerHTML = '';
-            modSuiteReactRoot = {
-                container,
-                unmount: () => container.remove(),
-                isDOM: true
-            };
-
-            // Don't show error message, just prepare for DOM-based rendering
-            console.log('ModSuite: Using DOM-based fallback');
-        }
-    }
-}
-
-// Function to cleanup React component
-function cleanupModSuiteComponent() {
-    if (modSuiteReactRoot) {
-        try {
-            if (modSuiteReactRoot.unmount) {
-                modSuiteReactRoot.unmount();
-            } else if (modSuiteReactRoot.render) {
-                modSuiteReactRoot.unmount();
-            }
-        } catch (error) {
-            console.error('ModSuite: Error during cleanup:', error);
-        }
-
-        const container = document.getElementById('modsuite-react-root');
-        if (container) container.remove();
-
-        modSuiteReactRoot = null;
-    }
-}
+// ModSuite components will be rendered via patches
 
 // Simple DOM-based modal functions (keeping for compatibility)
 function createModSuiteModal(user?: any) {
-    // Ensure React component is rendered
-    if (!modSuiteReactRoot) {
-        renderModSuiteComponent();
-    }
-
-    // Check if we're using DOM fallback
-    if (modSuiteReactRoot && modSuiteReactRoot.isDOM) {
-        // Use DOM-based modal instead
-        createDOMBasedModal(user);
-        return;
-    }
-
-    // Trigger React component
+    // Trigger React component via event
     const event = new CustomEvent('modsuite:open-panel', { detail: { user } });
     document.dispatchEvent(event);
 }
 
-// DOM-based modal as fallback
+// DOM-based modal as fallback (unused - keeping for reference)
 function createDOMBasedModal(user?: any) {
     // Remove existing modal
     const existing = document.getElementById('modsuite-dom-modal');
@@ -2998,9 +2895,6 @@ export default definePlugin({
         // Create floating button
         createFloatingButton();
 
-        // Render React component
-        renderModSuiteComponent();
-
         // Listen for channel changes to update floating button
         this.channelChangeListener = () => updateFloatingButton();
         SelectedChannelStore.addChangeListener(this.channelChangeListener);
@@ -3019,16 +2913,32 @@ export default definePlugin({
         const button = document.getElementById('modsuite-floating-btn');
         if (button) button.remove();
 
-        // Cleanup React component
-        cleanupModSuiteComponent();
-
         // Remove channel change listener
         if (this.channelChangeListener) {
             SelectedChannelStore.removeChangeListener(this.channelChangeListener);
         }
     },
 
-    // No patches needed - using direct React rendering
+    // Patch to inject ModSuite into Discord's UI
+    patches: [
+        {
+            find: "Messages.ACTIVITY_PANEL",
+            replacement: {
+                match: /(?<=\i\.createElement\(\i\.Fragment,null,)/,
+                replace: "$self.renderModSuite(),"
+            }
+        }
+    ],
+
+    renderModSuite() {
+        return React.createElement(React.Fragment, null,
+            React.createElement(ModSuitePanel),
+            React.createElement(ModerationModal),
+            React.createElement(UserTrackingModal),
+            React.createElement(PingHistoryModal),
+            React.createElement(MessageSelectorModal)
+        );
+    },
 
 
 
