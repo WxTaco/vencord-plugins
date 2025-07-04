@@ -46,8 +46,8 @@ interface SavedEmbeds {
 const settings = definePluginSettings({
     apiUrl: {
         type: OptionType.STRING,
-        description: "Your bot's API URL",
-        default: "https://api.wrapped.site"
+        description: "Your bot's API URL.)",
+        default: "api.wrapped.site"
     },
     authToken: {
         type: OptionType.STRING,
@@ -166,7 +166,7 @@ export default definePlugin({
             name: "embed-builder",
             description: "Open Embed Builder (alias for /embed) 🌸",
             inputType: ApplicationCommandInputType.BUILT_IN,
-            execute: async (args, ctx) => {
+            execute: async (_, ctx) => {
                 await openEmbedTester(ctx, "create");
             }
         }
