@@ -19,7 +19,7 @@ export interface EmbedTemplate {
 
 export const TEMPLATE_CATEGORIES = {
     ANNOUNCEMENTS: "Announcements",
-    EVENTS: "Events", 
+    EVENTS: "Events",
     POLLS: "Polls & Surveys",
     WELCOME: "Welcome Messages",
     RULES: "Rules & Guidelines",
@@ -188,6 +188,10 @@ const STORAGE_KEY = "embed-builder-templates";
 export class TemplateManager {
     static getCustomTemplates(): EmbedTemplate[] {
         try {
+            // Check if localStorage is available (not available in Vencord context)
+            if (typeof localStorage === 'undefined') {
+                return [];
+            }
             const stored = localStorage.getItem(STORAGE_KEY);
             return stored ? JSON.parse(stored) : [];
         } catch (error) {
@@ -207,9 +211,11 @@ export class TemplateManager {
 
         const customTemplates = this.getCustomTemplates();
         customTemplates.push(newTemplate);
-        
+
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+            }
             return newTemplate;
         } catch (error) {
             console.error("Failed to save template:", error);
@@ -220,7 +226,7 @@ export class TemplateManager {
     static updateCustomTemplate(id: string, updates: Partial<EmbedTemplate>): boolean {
         const customTemplates = this.getCustomTemplates();
         const index = customTemplates.findIndex(t => t.id === id);
-        
+
         if (index === -1) return false;
 
         customTemplates[index] = {
@@ -230,7 +236,9 @@ export class TemplateManager {
         };
 
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates));
+            }
             return true;
         } catch (error) {
             console.error("Failed to update template:", error);
@@ -241,11 +249,13 @@ export class TemplateManager {
     static deleteCustomTemplate(id: string): boolean {
         const customTemplates = this.getCustomTemplates();
         const filtered = customTemplates.filter(t => t.id !== id);
-        
+
         if (filtered.length === customTemplates.length) return false;
 
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+            }
             return true;
         } catch (error) {
             console.error("Failed to delete template:", error);
@@ -270,7 +280,7 @@ export class TemplateManager {
         return JSON.stringify(customTemplates, null, 2);
     }
 
-    static importTemplates(jsonData: string): { success: number; errors: string[] } {
+    static importTemplates(jsonData: string): { success: number; errors: string[]; } {
         try {
             const templates = JSON.parse(jsonData);
             if (!Array.isArray(templates)) {
@@ -278,7 +288,7 @@ export class TemplateManager {
             }
 
             const results = { success: 0, errors: [] as string[] };
-            
+
             templates.forEach((template, index) => {
                 try {
                     this.saveCustomTemplate({
