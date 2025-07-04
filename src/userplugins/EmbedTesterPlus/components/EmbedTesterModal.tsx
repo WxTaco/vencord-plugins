@@ -90,7 +90,7 @@ export function EmbedTesterModal(props: ModalProps) {
                         fontWeight: "700",
                         textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
                     }}>
-                        Embed Tester+ Professional
+                        Embed Builder 🌸
                     </h2>
                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                         <label style={{

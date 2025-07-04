@@ -8,39 +8,40 @@ import definePlugin from "@utils/types";
 import { Devs } from "@utils/constants";
 import { openModal } from "@utils/modal";
 import { React } from "@webpack/common";
+import { ApplicationCommandInputType } from "@api/Commands";
 import { EmbedTesterModal } from "./components/EmbedTesterModal";
 
 export default definePlugin({
-    name: "EmbedTesterPlus",
-    description: "Professional embed builder with visual editor and image generation",
+    name: "EmbedBuilder",
+    description: "Embed Builder with visual editor and image generation 🌸",
     authors: [Devs.Ven],
     dependencies: ["CommandsAPI"],
 
     commands: [
         {
             name: "embed",
-            description: "Open the professional Embed Tester+ builder",
+            description: "Open the Embed Builder 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
             execute: () => {
                 openEmbedTester();
-                return { content: "" }; // Prevent message from being sent
             }
         },
         {
             name: "embed-builder",
-            description: "Open Embed Tester+ (alias for /embed)",
+            description: "Open Embed Builder (alias for /embed) 🌸",
+            inputType: ApplicationCommandInputType.BUILT_IN,
             execute: () => {
                 openEmbedTester();
-                return { content: "" }; // Prevent message from being sent
             }
         }
     ],
 
     start() {
-        console.log("EmbedTesterPlus: Professional plugin started");
+        console.log("EmbedBuilder: Plugin started 🌸");
     },
 
     stop() {
-        console.log("EmbedTesterPlus: Plugin stopped");
+        console.log("EmbedBuilder: Plugin stopped");
     },
 
     // Add settings panel button with professional theme
@@ -62,7 +63,7 @@ export default definePlugin({
                     fontSize: "18px",
                     fontWeight: "600"
                 }
-            }, "Embed Tester+"),
+            }, "Embed Builder 🌸"),
             React.createElement("p", {
                 key: "desc",
                 style: {
@@ -71,7 +72,7 @@ export default definePlugin({
                     fontSize: "14px",
                     lineHeight: "1.5"
                 }
-            }, "Professional Discord embed builder with visual editor, JSON editor, and image generation capabilities."),
+            }, "Beautiful Discord embed builder with visual editor, JSON editor, and image generation capabilities."),
             React.createElement("div", {
                 key: "buttons",
                 style: { display: "flex", gap: "8px", flexWrap: "wrap" }
@@ -90,7 +91,7 @@ export default definePlugin({
                         fontWeight: "600",
                         boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
                     }
-                }, "Open Embed Builder"),
+                }, "Open Embed Builder 🌸"),
                 React.createElement("div", {
                     key: "info",
                     style: {
@@ -99,7 +100,7 @@ export default definePlugin({
                         marginTop: "4px",
                         fontStyle: "italic"
                     }
-                }, "Also available via /embed or /embed-builder commands")
+                }, "Also available via /embed or /embed-builder commands 🌸")
             ])
         ]);
     }
