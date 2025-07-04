@@ -12,36 +12,38 @@ import { EmbedTesterModal } from "./components/EmbedTesterModal";
 
 export default definePlugin({
     name: "EmbedTesterPlus",
-    description: "🌸 Beautiful embed builder with pink theme, visual editor, and image generation",
+    description: "Professional embed builder with visual editor and image generation",
     authors: [Devs.Ven],
     dependencies: ["CommandsAPI"],
 
     commands: [
         {
             name: "embed",
-            description: "🌸 Open the beautiful Embed Tester+ builder",
+            description: "Open the professional Embed Tester+ builder",
             execute: () => {
                 openEmbedTester();
+                return { content: "" }; // Prevent message from being sent
             }
         },
         {
             name: "embed-builder",
-            description: "🌸 Open Embed Tester+ (alias for /embed)",
+            description: "Open Embed Tester+ (alias for /embed)",
             execute: () => {
                 openEmbedTester();
+                return { content: "" }; // Prevent message from being sent
             }
         }
     ],
 
     start() {
-        console.log("EmbedTesterPlus: 🌸 Pink-themed plugin started");
+        console.log("EmbedTesterPlus: Professional plugin started");
     },
 
     stop() {
         console.log("EmbedTesterPlus: Plugin stopped");
     },
 
-    // Add settings panel button with pink theme
+    // Add settings panel button with professional theme
     settingsAboutComponent: () => {
         return React.createElement("div", {
             style: {
@@ -60,7 +62,7 @@ export default definePlugin({
                     fontSize: "18px",
                     fontWeight: "600"
                 }
-            }, "🌸 Embed Tester+"),
+            }, "Embed Tester+"),
             React.createElement("p", {
                 key: "desc",
                 style: {
@@ -69,7 +71,7 @@ export default definePlugin({
                     fontSize: "14px",
                     lineHeight: "1.5"
                 }
-            }, "Create beautiful Discord embeds with our pink-themed visual builder, JSON editor, and image generation!"),
+            }, "Professional Discord embed builder with visual editor, JSON editor, and image generation capabilities."),
             React.createElement("div", {
                 key: "buttons",
                 style: { display: "flex", gap: "8px", flexWrap: "wrap" }
@@ -88,7 +90,7 @@ export default definePlugin({
                         fontWeight: "600",
                         boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
                     }
-                }, "🌸 Open Embed Builder"),
+                }, "Open Embed Builder"),
                 React.createElement("div", {
                     key: "info",
                     style: {
@@ -97,7 +99,7 @@ export default definePlugin({
                         marginTop: "4px",
                         fontStyle: "italic"
                     }
-                }, "💡 Also available via /embed or /embed-builder commands!")
+                }, "Also available via /embed or /embed-builder commands")
             ])
         ]);
     }

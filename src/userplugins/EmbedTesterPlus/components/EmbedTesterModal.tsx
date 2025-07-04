@@ -90,7 +90,7 @@ export function EmbedTesterModal(props: ModalProps) {
                         fontWeight: "700",
                         textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
                     }}>
-                        🌸 Embed Tester+
+                        Embed Tester+ Professional
                     </h2>
                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                         <label style={{
@@ -110,7 +110,7 @@ export function EmbedTesterModal(props: ModalProps) {
                                     transform: "scale(1.1)"
                                 }}
                             />
-                            🌙 Dark Preview
+                            Dark Preview
                         </label>
                         <ModalCloseButton onClick={props.onClose} />
                     </div>
@@ -137,19 +137,19 @@ export function EmbedTesterModal(props: ModalProps) {
                             onClick={() => setActiveTab("gui")}
                             style={tabStyle(activeTab === "gui")}
                         >
-                            🎨 Visual Editor
+                            Visual Editor
                         </button>
                         <button
                             onClick={() => setActiveTab("json")}
                             style={tabStyle(activeTab === "json")}
                         >
-                            📝 JSON Editor
+                            JSON Editor
                         </button>
                         <button
                             onClick={() => setActiveTab("timestamp")}
                             style={tabStyle(activeTab === "timestamp")}
                         >
-                            ⏰ Timestamp Tool
+                            Timestamp Tool
                         </button>
                     </div>
 
@@ -165,7 +165,7 @@ export function EmbedTesterModal(props: ModalProps) {
                             marginBottom: "16px",
                             fontWeight: "500"
                         }}>
-                            ❌ Error: {jsonError}
+                            Error: {jsonError}
                         </div>
                     )}
 
@@ -229,7 +229,7 @@ export function EmbedTesterModal(props: ModalProps) {
                                     color: "#be185d",
                                     textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
                                 }}>
-                                    ✨ Live Preview
+                                    Live Preview
                                 </h3>
                                 <div style={{ display: "flex", gap: "8px" }}>
                                     <button
@@ -247,7 +247,7 @@ export function EmbedTesterModal(props: ModalProps) {
                                             boxShadow: "0 2px 4px rgba(236, 72, 153, 0.3)"
                                         }}
                                     >
-                                        {isGeneratingImage ? "⏳" : "📋"} Copy Image
+                                        {isGeneratingImage ? "Processing..." : "Copy Image"}
                                     </button>
                                     <button
                                         onClick={handleGenerateImage}
@@ -264,7 +264,7 @@ export function EmbedTesterModal(props: ModalProps) {
                                             boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
                                         }}
                                     >
-                                        {isGeneratingImage ? "⏳" : "💾"} Save Image
+                                        {isGeneratingImage ? "Processing..." : "Save Image"}
                                     </button>
                                 </div>
                             </div>

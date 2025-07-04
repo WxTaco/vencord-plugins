@@ -116,7 +116,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                         boxShadow: "0 2px 4px rgba(190, 24, 93, 0.3)"
                     }}
                 >
-                    📋 Copy JSON
+                    Copy JSON
                 </button>
                 <button
                     onClick={copyMarkdown}
@@ -132,7 +132,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                         boxShadow: "0 2px 4px rgba(236, 72, 153, 0.3)"
                     }}
                 >
-                    📝 Copy Markdown
+                    Copy Markdown
                 </button>
             </div>
 
@@ -145,7 +145,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                     fontWeight: "700",
                     textShadow: "0 1px 2px rgba(190, 24, 93, 0.1)"
                 }}>
-                    🌸 Basic Information
+                    Basic Information
                 </h4>
 
                 <div style={{ marginBottom: "12px" }}>
