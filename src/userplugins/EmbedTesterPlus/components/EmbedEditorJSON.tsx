@@ -35,7 +35,7 @@ export function EmbedEditorJSON({ embedData, onChange, error }: EmbedEditorJSONP
         try {
             const parsed = JSON.parse(value);
             const validation = validateEmbed(parsed);
-            
+
             if (validation.isValid) {
                 onChange(parsed);
             } else {
@@ -83,7 +83,7 @@ export function EmbedEditorJSON({ embedData, onChange, error }: EmbedEditorJSONP
     const pasteFromClipboard = async () => {
         try {
             const text = await navigator.clipboard.readText();
-            
+
             // Try to parse as JSON first
             try {
                 const parsed = JSON.parse(text);
@@ -112,7 +112,7 @@ export function EmbedEditorJSON({ embedData, onChange, error }: EmbedEditorJSONP
 
     const loadTemplate = (template: string) => {
         let templateData: EmbedData;
-        
+
         switch (template) {
             case "basic":
                 templateData = {
@@ -170,10 +170,10 @@ export function EmbedEditorJSON({ embedData, onChange, error }: EmbedEditorJSONP
     return (
         <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
             {/* Toolbar */}
-            <div style={{ 
-                marginBottom: "12px", 
-                display: "flex", 
-                gap: "8px", 
+            <div style={{
+                marginBottom: "12px",
+                display: "flex",
+                gap: "8px",
                 flexWrap: "wrap",
                 padding: "8px",
                 background: "#f9f9f9",
@@ -253,7 +253,7 @@ export function EmbedEditorJSON({ embedData, onChange, error }: EmbedEditorJSONP
             </div>
 
             {/* Templates */}
-            <div style={{ 
+            <div style={{
                 marginBottom: "12px",
                 padding: "8px",
                 background: "#f0f8ff",
@@ -329,17 +329,16 @@ export function EmbedEditorJSON({ embedData, onChange, error }: EmbedEditorJSONP
                 <textarea
                     value={jsonText}
                     onChange={(e) => handleJsonChange(e.target.value)}
+                    className="embed-textarea"
                     style={{
                         flex: 1,
-                        width: "100%",
-                        padding: "12px",
-                        border: currentError ? "1px solid #ef4444" : "1px solid #e3e5e8",
-                        borderRadius: "4px",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         fontFamily: "'Fira Code', 'Monaco', 'Consolas', monospace",
-                        lineHeight: "1.5",
+                        lineHeight: "1.6",
                         resize: "none",
-                        background: currentError ? "#fef2f2" : "white"
+                        border: currentError ? "2px solid #ef4444" : undefined,
+                        background: currentError ? "#fef2f2" : undefined,
+                        minHeight: "500px"
                     }}
                     placeholder="Enter embed JSON here..."
                     spellCheck={false}

@@ -71,7 +71,7 @@ export function EmbedTesterModal(props: ModalProps) {
     });
 
     return (
-        <ModalRoot {...props} size={ModalSize.DYNAMIC}>
+        <ModalRoot {...props} size={ModalSize.LARGE}>
             <ModalHeader>
                 <div style={{
                     display: "flex",
@@ -118,10 +118,12 @@ export function EmbedTesterModal(props: ModalProps) {
             </ModalHeader>
 
             <ModalContent style={{
-                padding: "20px",
-                maxHeight: "80vh",
+                padding: "24px",
+                maxHeight: "85vh",
                 overflow: "hidden",
-                background: "linear-gradient(135deg, #fefcff, #fdf2f8)"
+                background: "linear-gradient(135deg, #fefcff, #fdf2f8)",
+                minWidth: "1200px",
+                minHeight: "700px"
             }}>
                 <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                     {/* Tab Navigation */}
@@ -172,21 +174,23 @@ export function EmbedTesterModal(props: ModalProps) {
                     {/* Main Content Area */}
                     <div style={{
                         display: "flex",
-                        gap: "20px",
-                        height: "600px",
+                        gap: "24px",
+                        height: "650px",
                         overflow: "hidden"
                     }}>
                         {/* Left Panel - Editor */}
                         <div style={{
                             flex: "1",
-                            minWidth: "400px",
+                            minWidth: "500px",
                             overflow: "auto",
                             border: "2px solid #f9a8d4",
                             borderRadius: "12px",
-                            padding: "20px",
-                            background: "rgba(255, 255, 255, 0.8)",
+                            padding: "24px",
+                            background: "rgba(255, 255, 255, 0.9)",
                             boxShadow: "0 4px 6px rgba(190, 24, 93, 0.1)"
-                        }}>
+                        }}
+                            className="embed-panel-scrollbar"
+                        >
                             {activeTab === "gui" && (
                                 <EmbedEditorGUI
                                     embedData={embedData}
@@ -208,14 +212,16 @@ export function EmbedTesterModal(props: ModalProps) {
                         {/* Right Panel - Preview */}
                         <div style={{
                             flex: "1",
-                            minWidth: "400px",
+                            minWidth: "500px",
                             overflow: "auto",
                             border: "2px solid #f9a8d4",
                             borderRadius: "12px",
-                            padding: "20px",
-                            background: "rgba(255, 255, 255, 0.8)",
+                            padding: "24px",
+                            background: "rgba(255, 255, 255, 0.9)",
                             boxShadow: "0 4px 6px rgba(190, 24, 93, 0.1)"
-                        }}>
+                        }}
+                            className="embed-panel-scrollbar"
+                        >
                             <div style={{
                                 display: "flex",
                                 justifyContent: "space-between",
@@ -276,6 +282,114 @@ export function EmbedTesterModal(props: ModalProps) {
                     </div>
                 </div>
             </ModalContent>
+
+            {/* Custom Scrollbar and Enhanced Styling */}
+            <style>{`
+                .embed-panel-scrollbar::-webkit-scrollbar {
+                    width: 12px;
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-track {
+                    background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+                    border-radius: 6px;
+                    border: 1px solid #f9a8d4;
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-thumb {
+                    background: linear-gradient(135deg, #ec4899, #be185d);
+                    border-radius: 6px;
+                    border: 2px solid #fdf2f8;
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: linear-gradient(135deg, #be185d, #9d174d);
+                }
+
+                .embed-panel-scrollbar::-webkit-scrollbar-corner {
+                    background: #fdf2f8;
+                }
+
+                /* Enhanced input styling */
+                .embed-text-input {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid #f9a8d4;
+                    border-radius: 8px;
+                    fontSize: 14px;
+                    fontFamily: inherit;
+                    background: rgba(255, 255, 255, 0.95);
+                    color: #831843;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1);
+                }
+
+                .embed-text-input:focus {
+                    outline: none;
+                    border-color: #ec4899;
+                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+                    background: rgba(255, 255, 255, 1);
+                }
+
+                .embed-text-input:hover {
+                    border-color: #f472b6;
+                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15);
+                }
+
+                /* Enhanced textarea styling */
+                .embed-textarea {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid #f9a8d4;
+                    border-radius: 8px;
+                    fontSize: 14px;
+                    fontFamily: inherit;
+                    background: rgba(255, 255, 255, 0.95);
+                    color: #831843;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1);
+                    resize: vertical;
+                    min-height: 80px;
+                }
+
+                .embed-textarea:focus {
+                    outline: none;
+                    border-color: #ec4899;
+                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+                    background: rgba(255, 255, 255, 1);
+                }
+
+                .embed-textarea:hover {
+                    border-color: #f472b6;
+                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15);
+                }
+
+                /* Enhanced select styling */
+                .embed-select {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid #f9a8d4;
+                    border-radius: 8px;
+                    fontSize: 14px;
+                    fontFamily: inherit;
+                    background: rgba(255, 255, 255, 0.95);
+                    color: #831843;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(249, 168, 212, 0.1);
+                    cursor: pointer;
+                }
+
+                .embed-select:focus {
+                    outline: none;
+                    border-color: #ec4899;
+                    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+                    background: rgba(255, 255, 255, 1);
+                }
+
+                .embed-select:hover {
+                    border-color: #f472b6;
+                    box-shadow: 0 4px 8px rgba(249, 168, 212, 0.15);
+                }
+            `}</style>
         </ModalRoot>
     );
 }

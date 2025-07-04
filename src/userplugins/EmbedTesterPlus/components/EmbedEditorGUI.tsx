@@ -61,17 +61,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
         showToast("Markdown copied to clipboard!", Toasts.Type.SUCCESS);
     };
 
-    const inputStyle: React.CSSProperties = {
-        width: "100%",
-        padding: "10px",
-        border: "2px solid #f9a8d4",
-        borderRadius: "8px",
-        fontSize: "14px",
-        fontFamily: "inherit",
-        background: "rgba(255, 255, 255, 0.9)",
-        color: "#831843",
-        transition: "all 0.2s ease"
-    };
+    const inputStyle: React.CSSProperties = {}; // Will use CSS class instead
 
     const labelStyle: React.CSSProperties = {
         display: "block",
@@ -155,7 +145,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                         value={embedData.title || ""}
                         onChange={(e) => updateEmbed({ title: e.target.value })}
                         placeholder="Embed title"
-                        style={inputStyle}
+                        className="embed-text-input"
                         maxLength={256}
                     />
                 </div>
@@ -166,7 +156,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                         value={embedData.description || ""}
                         onChange={(e) => updateEmbed({ description: e.target.value })}
                         placeholder="Embed description"
-                        style={{ ...inputStyle, height: "80px", resize: "vertical" }}
+                        className="embed-textarea"
                         maxLength={4096}
                     />
                 </div>
@@ -178,7 +168,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                         value={embedData.url || ""}
                         onChange={(e) => updateEmbed({ url: e.target.value })}
                         placeholder="https://example.com"
-                        style={inputStyle}
+                        className="embed-text-input"
                     />
                 </div>
 
@@ -189,7 +179,8 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             type="color"
                             value={colorInput}
                             onChange={(e) => handleColorChange(e.target.value)}
-                            style={{ ...inputStyle, height: "36px" }}
+                            className="embed-text-input"
+                            style={{ height: "48px" }}
                         />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -198,7 +189,7 @@ export function EmbedEditorGUI({ embedData, onChange }: EmbedEditorGUIProps) {
                             type="datetime-local"
                             value={embedData.timestamp ? new Date(embedData.timestamp).toISOString().slice(0, 16) : ""}
                             onChange={(e) => updateEmbed({ timestamp: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                            style={inputStyle}
+                            className="embed-text-input"
                         />
                     </div>
                 </div>
