@@ -209,14 +209,37 @@ export class TemplateManager {
 
     // Get all templates (built-in + custom)
     static async getAllTemplates(): Promise<EmbedTemplate[]> {
-        const customTemplates = await this.getCustomTemplates();
-        return [...BUILTIN_TEMPLATES, ...customTemplates];
+        try {
+            const customTemplates = await this.getCustomTemplates();
+
+            // Ensure customTemplates is an array
+            if (!Array.isArray(customTemplates)) {
+                console.warn("🌸 Custom templates is not an array:", typeof customTemplates, customTemplates);
+                return [...BUILTIN_TEMPLATES];
+            }
+
+            return [...BUILTIN_TEMPLATES, ...customTemplates];
+        } catch (error) {
+            console.error("🌸 Failed to get all templates:", error);
+            return [...BUILTIN_TEMPLATES];
+        }
     }
 
     // Get templates by category
     static async getTemplatesByCategory(category: string): Promise<EmbedTemplate[]> {
-        const allTemplates = await this.getAllTemplates();
-        return allTemplates.filter(t => t.category === category);
+        try {
+            const allTemplates = await this.getAllTemplates();
+
+            if (!Array.isArray(allTemplates)) {
+                console.warn("🌸 All templates is not an array:", typeof allTemplates);
+                return [];
+            }
+
+            return allTemplates.filter(t => t.category === category);
+        } catch (error) {
+            console.error("🌸 Failed to get templates by category:", error);
+            return [];
+        }
     }
 
     // Get template by ID
@@ -232,27 +255,57 @@ export class TemplateManager {
 
     // Get favorite templates
     static async getFavoriteTemplates(): Promise<EmbedTemplate[]> {
-        const { VencordStorage } = await import("./VencordStorage");
-        const userData = await VencordStorage.getUserData();
-        const allTemplates = await this.getAllTemplates();
+        try {
+            const { VencordStorage } = await import("./VencordStorage");
+            const userData = await VencordStorage.getUserData();
+            const allTemplates = await this.getAllTemplates();
 
-        return allTemplates.filter(t => userData.favoriteTemplates.includes(t.id));
+            if (!Array.isArray(allTemplates)) {
+                console.warn("🌸 All templates is not an array in getFavoriteTemplates");
+                return [];
+            }
+
+            if (!Array.isArray(userData.favoriteTemplates)) {
+                console.warn("🌸 Favorite templates is not an array:", typeof userData.favoriteTemplates);
+                return [];
+            }
+
+            return allTemplates.filter(t => userData.favoriteTemplates.includes(t.id));
+        } catch (error) {
+            console.error("🌸 Failed to get favorite templates:", error);
+            return [];
+        }
     }
 
     // Get recent templates
     static async getRecentTemplates(): Promise<EmbedTemplate[]> {
-        const { VencordStorage } = await import("./VencordStorage");
-        const userData = await VencordStorage.getUserData();
-        const allTemplates = await this.getAllTemplates();
+        try {
+            const { VencordStorage } = await import("./VencordStorage");
+            const userData = await VencordStorage.getUserData();
+            const allTemplates = await this.getAllTemplates();
 
-        // Return templates in the order they appear in recent list
-        const recentTemplates: EmbedTemplate[] = [];
-        for (const templateId of userData.recentTemplates) {
-            const template = allTemplates.find(t => t.id === templateId);
-            if (template) recentTemplates.push(template);
+            if (!Array.isArray(allTemplates)) {
+                console.warn("🌸 All templates is not an array in getRecentTemplates");
+                return [];
+            }
+
+            if (!Array.isArray(userData.recentTemplates)) {
+                console.warn("🌸 Recent templates is not an array:", typeof userData.recentTemplates);
+                return [];
+            }
+
+            // Return templates in the order they appear in recent list
+            const recentTemplates: EmbedTemplate[] = [];
+            for (const templateId of userData.recentTemplates) {
+                const template = allTemplates.find(t => t.id === templateId);
+                if (template) recentTemplates.push(template);
+            }
+
+            return recentTemplates;
+        } catch (error) {
+            console.error("🌸 Failed to get recent templates:", error);
+            return [];
         }
-
-        return recentTemplates;
     }
 
     // Add template to favorites
@@ -275,44 +328,65 @@ export class TemplateManager {
 
     // Get templates grouped by category
     static async getTemplatesGroupedByCategory(): Promise<Record<string, EmbedTemplate[]>> {
-        const allTemplates = await this.getAllTemplates();
-        const grouped: Record<string, EmbedTemplate[]> = {};
+        try {
+            const allTemplates = await this.getAllTemplates();
+            const grouped: Record<string, EmbedTemplate[]> = {};
 
-        // Initialize with all categories
-        Object.values(TEMPLATE_CATEGORIES).forEach(category => {
-            grouped[category] = [];
-        });
-
-        // Group templates
-        allTemplates.forEach(template => {
-            if (!grouped[template.category]) {
-                grouped[template.category] = [];
+            if (!Array.isArray(allTemplates)) {
+                console.warn("🌸 All templates is not an array in getTemplatesGroupedByCategory");
+                return {};
             }
-            grouped[template.category].push(template);
-        });
 
-        // Remove empty categories
-        Object.keys(grouped).forEach(category => {
-            if (grouped[category].length === 0) {
-                delete grouped[category];
-            }
-        });
+            // Initialize with all categories
+            Object.values(TEMPLATE_CATEGORIES).forEach(category => {
+                grouped[category] = [];
+            });
 
-        return grouped;
+            // Group templates
+            allTemplates.forEach(template => {
+                if (!grouped[template.category]) {
+                    grouped[template.category] = [];
+                }
+                grouped[template.category].push(template);
+            });
+
+            // Remove empty categories
+            Object.keys(grouped).forEach(category => {
+                if (grouped[category].length === 0) {
+                    delete grouped[category];
+                }
+            });
+
+            return grouped;
+        } catch (error) {
+            console.error("🌸 Failed to group templates by category:", error);
+            return {};
+        }
     }
 
     // Search templates
     static async searchTemplates(query: string): Promise<EmbedTemplate[]> {
-        const allTemplates = await this.getAllTemplates();
-        const lowercaseQuery = query.toLowerCase();
+        try {
+            const allTemplates = await this.getAllTemplates();
 
-        return allTemplates.filter(template =>
-            template.name.toLowerCase().includes(lowercaseQuery) ||
-            template.description.toLowerCase().includes(lowercaseQuery) ||
-            template.category.toLowerCase().includes(lowercaseQuery) ||
-            template.embedData.title?.toLowerCase().includes(lowercaseQuery) ||
-            template.embedData.description?.toLowerCase().includes(lowercaseQuery)
-        );
+            if (!Array.isArray(allTemplates)) {
+                console.warn("🌸 All templates is not an array in searchTemplates");
+                return [];
+            }
+
+            const lowercaseQuery = query.toLowerCase();
+
+            return allTemplates.filter(template =>
+                template.name.toLowerCase().includes(lowercaseQuery) ||
+                template.description.toLowerCase().includes(lowercaseQuery) ||
+                template.category.toLowerCase().includes(lowercaseQuery) ||
+                template.embedData.title?.toLowerCase().includes(lowercaseQuery) ||
+                template.embedData.description?.toLowerCase().includes(lowercaseQuery)
+            );
+        } catch (error) {
+            console.error("🌸 Failed to search templates:", error);
+            return [];
+        }
     }
 
     // Export custom templates
