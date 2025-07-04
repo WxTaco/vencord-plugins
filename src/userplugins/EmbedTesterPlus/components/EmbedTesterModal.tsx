@@ -11,15 +11,120 @@ import { EmbedEditorGUI } from "./EmbedEditorGUI";
 import { EmbedEditorJSON } from "./EmbedEditorJSON";
 import { TimestampTool } from "./TimestampTool";
 import { TemplateManagerComponent } from "./TemplateManager";
-import { defaultEmbed, validateEmbed } from "../utils/embedUtils";
+import { defaultEmbed, validateEmbed, EmbedData } from "../utils/embedUtils";
 import { generateEmbedImage, downloadEmbedImage, copyEmbedImageToClipboard } from "../utils/imageGenerator";
 
-export function EmbedTesterModal(props: ModalProps) {
-    const [embedData, setEmbedData] = useState(defaultEmbed);
-    const [activeTab, setActiveTab] = useState<"gui" | "json" | "timestamp" | "templates">("gui");
+interface SavedEmbed {
+    title?: string;
+    description?: string;
+    color?: number;
+    author?: {
+        name?: string;
+        icon_url?: string;
+        url?: string;
+    };
+    footer?: {
+        text?: string;
+        icon_url?: string;
+    };
+    thumbnail?: {
+        url?: string;
+    };
+    image?: {
+        url?: string;
+    };
+    fields?: Array<{
+        name: string;
+        value: string;
+        inline?: boolean;
+    }>;
+    timestamp?: string;
+    url?: string;
+}
+
+interface SavedEmbeds {
+    [embedName: string]: SavedEmbed;
+}
+
+interface EnhancedModalProps extends ModalProps {
+    guildId?: string;
+    channelId?: string;
+    userId?: string;
+    action?: string;
+    initialEmbed?: SavedEmbed | null;
+    savedEmbeds?: SavedEmbeds;
+    onSave?: (name: string, embed: SavedEmbed) => Promise<boolean>;
+    botIntegrationEnabled?: boolean;
+}
+
+// Convert SavedEmbed to EmbedData format
+function convertSavedEmbedToEmbedData(savedEmbed: SavedEmbed): EmbedData {
+    return {
+        ...savedEmbed,
+        footer: savedEmbed.footer ? {
+            text: savedEmbed.footer.text || "",
+            icon_url: savedEmbed.footer.icon_url
+        } : undefined,
+        image: savedEmbed.image ? {
+            url: savedEmbed.image.url || ""
+        } : undefined,
+        thumbnail: savedEmbed.thumbnail ? {
+            url: savedEmbed.thumbnail.url || ""
+        } : undefined,
+        author: savedEmbed.author ? {
+            name: savedEmbed.author.name || "",
+            url: savedEmbed.author.url,
+            icon_url: savedEmbed.author.icon_url
+        } : undefined
+    } as EmbedData;
+}
+
+// Convert EmbedData to SavedEmbed format
+function convertEmbedDataToSavedEmbed(embedData: EmbedData): SavedEmbed {
+    return {
+        ...embedData,
+        footer: embedData.footer ? {
+            text: embedData.footer.text,
+            icon_url: embedData.footer.icon_url
+        } : undefined,
+        image: embedData.image ? {
+            url: embedData.image.url
+        } : undefined,
+        thumbnail: embedData.thumbnail ? {
+            url: embedData.thumbnail.url
+        } : undefined,
+        author: embedData.author ? {
+            name: embedData.author.name,
+            url: embedData.author.url,
+            icon_url: embedData.author.icon_url
+        } : undefined
+    };
+}
+
+export function EmbedTesterModal(props: EnhancedModalProps) {
+    const {
+        guildId,
+        channelId,
+        userId,
+        action = "create",
+        initialEmbed,
+        savedEmbeds = {},
+        onSave,
+        botIntegrationEnabled = false,
+        ...modalProps
+    } = props;
+
+    const [embedData, setEmbedData] = useState<EmbedData>(
+        initialEmbed ? convertSavedEmbedToEmbedData(initialEmbed) : defaultEmbed
+    );
+    const [activeTab, setActiveTab] = useState<"gui" | "json" | "timestamp" | "templates">(
+        action === "load" && initialEmbed ? "gui" : "gui"
+    );
     const [darkMode, setDarkMode] = useState(true);
     const [jsonError, setJsonError] = useState<string | null>(null);
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
     const handleEmbedChange = (newEmbed: any) => {
         const validation = validateEmbed(newEmbed);
@@ -29,6 +134,41 @@ export function EmbedTesterModal(props: ModalProps) {
         } else {
             setJsonError(validation.error || "Invalid embed data");
         }
+    };
+
+    const handleSaveTemplate = async (templateName: string) => {
+        if (!onSave || !guildId) {
+            setSaveStatus("❌ Bot integration not available");
+            return;
+        }
+
+        setIsSaving(true);
+        setSaveStatus("💾 Saving template...");
+
+        try {
+            const savedEmbed = convertEmbedDataToSavedEmbed(embedData);
+            const success = await onSave(templateName, savedEmbed);
+
+            if (success) {
+                setSaveStatus(`✅ Template "${templateName}" saved successfully!`);
+                setTimeout(() => setSaveStatus(null), 3000);
+            } else {
+                setSaveStatus("❌ Failed to save template");
+                setTimeout(() => setSaveStatus(null), 3000);
+            }
+        } catch (error) {
+            console.error("Save error:", error);
+            setSaveStatus("❌ Error saving template");
+            setTimeout(() => setSaveStatus(null), 3000);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleLoadTemplate = (template: SavedEmbed) => {
+        const convertedEmbed = convertSavedEmbedToEmbedData(template);
+        setEmbedData(convertedEmbed);
+        setActiveTab("gui");
     };
 
     const handleGenerateImage = async () => {
@@ -72,7 +212,7 @@ export function EmbedTesterModal(props: ModalProps) {
     });
 
     return (
-        <ModalRoot {...props} size={ModalSize.LARGE}>
+        <ModalRoot {...modalProps} size={ModalSize.LARGE}>
             <ModalHeader>
                 <div style={{
                     display: "flex",
@@ -219,8 +359,13 @@ export function EmbedTesterModal(props: ModalProps) {
 
                             {activeTab === "templates" && (
                                 <TemplateManagerComponent
-                                    onSelectTemplate={setEmbedData}
+                                    onSelectTemplate={handleLoadTemplate}
                                     currentEmbedData={embedData}
+                                    savedEmbeds={savedEmbeds}
+                                    onSaveTemplate={handleSaveTemplate}
+                                    botIntegrationEnabled={botIntegrationEnabled}
+                                    saveStatus={saveStatus}
+                                    isSaving={isSaving}
                                 />
                             )}
                         </div>

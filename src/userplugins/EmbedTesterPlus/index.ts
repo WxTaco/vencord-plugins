@@ -4,39 +4,176 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import definePlugin from "@utils/types";
+import { ApplicationCommandInputType, ApplicationCommandOptionType, findOption, sendBotMessage } from "@api/Commands";
+import { definePluginSettings } from "@api/Settings";
+import definePlugin, { OptionType } from "@utils/types";
 import { openModal } from "@utils/modal";
 import { React } from "@webpack/common";
-import { ApplicationCommandInputType } from "@api/Commands";
 import { EmbedTesterModal } from "./components/EmbedTesterModal";
+
+interface SavedEmbed {
+    title?: string;
+    description?: string;
+    color?: number;
+    author?: {
+        name?: string;
+        icon_url?: string;
+        url?: string;
+    };
+    footer?: {
+        text?: string;
+        icon_url?: string;
+    };
+    thumbnail?: {
+        url?: string;
+    };
+    image?: {
+        url?: string;
+    };
+    fields?: Array<{
+        name: string;
+        value: string;
+        inline?: boolean;
+    }>;
+    timestamp?: string;
+    url?: string;
+}
+
+interface SavedEmbeds {
+    [embedName: string]: SavedEmbed;
+}
+
+const settings = definePluginSettings({
+    apiUrl: {
+        type: OptionType.STRING,
+        description: "Your bot's API URL",
+        default: "https://api.wrapped.site"
+    },
+    authToken: {
+        type: OptionType.STRING,
+        description: "Your authentication token",
+        default: ""
+    },
+    enableBotIntegration: {
+        type: OptionType.BOOLEAN,
+        description: "Enable bot API integration for templates",
+        default: true
+    },
+    autoSave: {
+        type: OptionType.BOOLEAN,
+        description: "Auto-save embeds as you build them",
+        default: true
+    },
+    showPreview: {
+        type: OptionType.BOOLEAN,
+        description: "Show live preview while editing",
+        default: true
+    }
+});
+
+async function fetchSavedEmbeds(guildId: string): Promise<SavedEmbeds | null> {
+    if (!settings.store.enableBotIntegration || !settings.store.apiUrl || !settings.store.authToken) {
+        return null;
+    }
+
+    try {
+        const response = await fetch(`${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`, {
+            headers: {
+                "Authorization": `Bearer ${settings.store.authToken}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.success ? data.embeds : null;
+    } catch (error) {
+        console.error("Failed to fetch saved embeds:", error);
+        return null;
+    }
+}
+
+async function saveEmbed(guildId: string, name: string, embed: SavedEmbed): Promise<boolean> {
+    if (!settings.store.enableBotIntegration || !settings.store.apiUrl || !settings.store.authToken) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(`${settings.store.apiUrl}/api/vencord/guilds/${guildId}/embeds`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${settings.store.authToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name, embed })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.success;
+    } catch (error) {
+        console.error("Failed to save embed:", error);
+        return false;
+    }
+}
 
 export default definePlugin({
     name: "EmbedBuilder",
-    description: "Embed Builder with visual editor and image generation 🌸",
+    description: "Enhanced Embed Builder with bot integration, templates, and image generation 🌸",
     authors: [{ name: "taco.ot", id: 905201724539666503n }],
     dependencies: ["CommandsAPI"],
+
+    settings,
 
     commands: [
         {
             name: "embed",
-            description: "Open the Embed Builder 🌸",
+            description: "🌸 Create beautiful embeds with templates and bot integration",
             inputType: ApplicationCommandInputType.BUILT_IN,
-            execute: () => {
-                openEmbedTester();
+            options: [
+                {
+                    name: "action",
+                    description: "What to do with embeds",
+                    type: ApplicationCommandOptionType.STRING,
+                    choices: [
+                        { name: "Create New", value: "create", label: "Create New" },
+                        { name: "Load Template", value: "load", label: "Load Template" },
+                        { name: "Quick Builder", value: "quick", label: "Quick Builder" }
+                    ],
+                    required: false
+                },
+                {
+                    name: "template",
+                    description: "Template name to load",
+                    type: ApplicationCommandOptionType.STRING,
+                    required: false
+                }
+            ],
+            execute: async (args, ctx) => {
+                const action = (findOption(args, "action") as string) || "create";
+                const templateName = findOption(args, "template") as string | undefined;
+
+                await openEmbedTester(ctx, action, templateName);
             }
         },
         {
             name: "embed-builder",
             description: "Open Embed Builder (alias for /embed) 🌸",
             inputType: ApplicationCommandInputType.BUILT_IN,
-            execute: () => {
-                openEmbedTester();
+            execute: async (args, ctx) => {
+                await openEmbedTester(ctx, "create");
             }
         }
     ],
 
     start() {
-        console.log("EmbedBuilder: Plugin started 🌸");
+        console.log("EmbedBuilder: Enhanced plugin started 🌸");
     },
 
     stop() {
@@ -106,9 +243,42 @@ export default definePlugin({
 });
 
 // Function to open the embed tester modal
-function openEmbedTester() {
-    openModal(props => React.createElement(EmbedTesterModal, props));
+async function openEmbedTester(ctx?: any, action: string = "create", templateName?: string) {
+    let savedEmbeds: SavedEmbeds | null = null;
+    let initialEmbed: SavedEmbed | null = null;
+
+    // If we have context and bot integration is enabled, try to fetch templates
+    if (ctx?.guild?.id && settings.store.enableBotIntegration) {
+        try {
+            savedEmbeds = await fetchSavedEmbeds(ctx.guild.id);
+
+            // Load specific template if requested
+            if (action === "load" && templateName && savedEmbeds) {
+                initialEmbed = savedEmbeds[templateName] || null;
+                if (!initialEmbed && ctx) {
+                    sendBotMessage(ctx.channel.id, {
+                        content: `❌ Template "${templateName}" not found!`
+                    });
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch templates:", error);
+        }
+    }
+
+    openModal(props => React.createElement(EmbedTesterModal, {
+        ...props,
+        guildId: ctx?.guild?.id,
+        channelId: ctx?.channel?.id,
+        userId: ctx?.user?.id,
+        action,
+        initialEmbed,
+        savedEmbeds: savedEmbeds || {},
+        onSave: ctx?.guild?.id ? (name: string, embed: SavedEmbed) => saveEmbed(ctx.guild.id, name, embed) : undefined,
+        botIntegrationEnabled: settings.store.enableBotIntegration
+    }));
 }
 
 // Export for use in other components
-export { openEmbedTester };
+export { openEmbedTester, fetchSavedEmbeds, saveEmbed };
