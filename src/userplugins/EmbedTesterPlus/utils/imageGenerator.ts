@@ -45,14 +45,34 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
         const embedWidth = 500;
         let currentY = embedY + 20;
 
-        // Embed background
-        ctx.fillStyle = theme.embedBg;
-        ctx.fillRect(embedX, embedY, embedWidth, canvas.height - 100);
+        // Helper function to draw rounded rectangle
+        const drawRoundedRect = (x: number, y: number, width: number, height: number, radius: number) => {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        };
 
-        // Left border (color)
+        // Embed background with rounded corners
+        const embedHeight = canvas.height - 100;
+        const borderRadius = 12;
+
+        ctx.fillStyle = theme.embedBg;
+        drawRoundedRect(embedX, embedY, embedWidth, embedHeight, borderRadius);
+        ctx.fill();
+
+        // Left border (color) with rounded corners
         const borderColor = embedData.color ? decimalToHex(embedData.color) : '#5865f2';
         ctx.fillStyle = borderColor;
-        ctx.fillRect(embedX, embedY, 4, canvas.height - 100);
+        drawRoundedRect(embedX, embedY, 4, embedHeight, 2);
+        ctx.fill();
 
         // Helper function to draw text
         const drawText = (text: string, x: number, y: number, options: {
@@ -249,23 +269,23 @@ export async function generateEmbedImage(embedData: EmbedData, darkMode: boolean
             finalCanvas.width = finalWidth;
             finalCanvas.height = finalHeight;
 
-            // Create beautiful gradient background
+            // Create dark pink gradient background
             const gradient = finalCtx.createRadialGradient(
                 finalWidth / 2, finalHeight / 3, 0,
                 finalWidth / 2, finalHeight / 3, Math.max(finalWidth, finalHeight) * 0.8
             );
-            gradient.addColorStop(0, '#fdf2f8'); // Light pink center
-            gradient.addColorStop(0.3, '#fce7f3'); // Soft pink
-            gradient.addColorStop(0.6, '#f3e8ff'); // Light purple
-            gradient.addColorStop(1, '#e0e7ff'); // Light blue edge
+            gradient.addColorStop(0, '#be185d'); // Dark pink center
+            gradient.addColorStop(0.3, '#9d174d'); // Deeper pink
+            gradient.addColorStop(0.6, '#831843'); // Very deep pink
+            gradient.addColorStop(1, '#500724'); // Almost black pink edge
             finalCtx.fillStyle = gradient;
             finalCtx.fillRect(0, 0, finalWidth, finalHeight);
 
             // Add subtle overlay gradient for depth
             const overlayGradient = finalCtx.createLinearGradient(0, 0, 0, finalHeight);
-            overlayGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-            overlayGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
-            overlayGradient.addColorStop(1, 'rgba(0, 0, 0, 0.05)');
+            overlayGradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+            overlayGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)');
+            overlayGradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
             finalCtx.fillStyle = overlayGradient;
             finalCtx.fillRect(0, 0, finalWidth, finalHeight);
 
